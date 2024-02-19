@@ -1,4 +1,4 @@
-import 'flutter_pos_printer_platform_image_3.dart';
+import 'flutter_pos_printer_platform_image_3_sdt.dart';
 
 class PrinterDiscovered<T> {
   String name;

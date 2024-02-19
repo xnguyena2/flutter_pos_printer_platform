@@ -1,4 +1,4 @@
-library flutter_pos_printer_platform_image_3;
+library flutter_pos_printer_platform_image_3_sdt;
 
 export './src/connectors/usb.dart';
 export './src/connectors/bluetooth.dart';

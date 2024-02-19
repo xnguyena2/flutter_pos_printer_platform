@@ -3,7 +3,7 @@
 # Run `pod lib lint flutter_pos_printer_platform.podspec` to validate before publishing.
 #
 Pod::Spec.new do |s|
-  s.name             = 'flutter_pos_printer_platform_image_3'
+  s.name             = 'flutter_pos_printer_platform_image_3_sdt'
   s.version          = '0.0.1'
   s.summary          = 'A new Flutter plugin project.'
   s.description      = <<-DESC
