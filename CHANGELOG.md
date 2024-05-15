@@ -58,3 +58,7 @@
 
 - Fix ios wifi scan
 - Fix windows print
+
+## 1.1.3
+
+- Fix dart version
