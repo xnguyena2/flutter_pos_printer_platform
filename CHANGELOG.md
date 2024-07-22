@@ -62,3 +62,7 @@
 ## 1.1.3
 
 - Fix dart version
+
+## 1.1.4
+
+- Fix android FLAG_MUTABLE to FLAG_IMMUTABLE
