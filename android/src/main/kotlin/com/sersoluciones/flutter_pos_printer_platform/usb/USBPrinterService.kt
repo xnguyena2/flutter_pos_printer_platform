@@ -11,6 +11,7 @@ import android.os.Handler
 import android.util.Base64
 import android.util.Log
 import android.widget.Toast
+import androidx.core.content.ContextCompat
 import com.sersoluciones.flutter_pos_printer_platform.R
 import java.nio.charset.Charset
 import java.util.*

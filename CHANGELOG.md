@@ -78,3 +78,7 @@
 ## 1.1.7
 
 - Fix android reciver postcast
+
+## 1.1.8
+
+- Fix android reciver postcast

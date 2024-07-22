@@ -9,6 +9,7 @@ import android.hardware.usb.*
 import android.util.Base64
 import android.util.Log
 import android.widget.Toast
+import androidx.core.content.ContextCompat
 import com.sersoluciones.flutter_pos_printer_platform.R
 import com.sersoluciones.flutter_pos_printer_platform.usb.USBPrinterService
 import java.nio.charset.Charset
