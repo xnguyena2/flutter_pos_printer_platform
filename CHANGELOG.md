@@ -70,3 +70,7 @@
 ## 1.1.5
 
 - Fix android target
+
+## 1.1.6
+
+- Fix android reciver postcast

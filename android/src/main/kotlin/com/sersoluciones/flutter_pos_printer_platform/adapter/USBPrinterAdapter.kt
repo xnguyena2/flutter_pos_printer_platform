@@ -34,7 +34,7 @@ class USBPrinterAdapter private constructor() {
         }
         val filter = IntentFilter(ACTION_USB_PERMISSION)
         filter.addAction(UsbManager.ACTION_USB_DEVICE_DETACHED)
-        mContext!!.registerReceiver(mUsbDeviceReceiver, filter)
+        mContext!!.registerReceiver(mUsbDeviceReceiver, filter, RECEIVER_EXPORTED)
         Log.v(LOG_TAG, "ESC/POS Printer initialized")
     }
 
