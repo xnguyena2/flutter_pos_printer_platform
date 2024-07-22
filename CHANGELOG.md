@@ -66,3 +66,7 @@
 ## 1.1.4
 
 - Fix android FLAG_MUTABLE to FLAG_IMMUTABLE
+
+## 1.1.5
+
+- Fix android target
