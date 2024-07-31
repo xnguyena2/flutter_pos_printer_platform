@@ -131,8 +131,12 @@ class UsbPrinterConnector implements PrinterConnector<UsbPrinterInput> {
           await flutterPrinterChannel.invokeMethod('getList');
       for (final device in results) {
         var r = await device;
+        //print("---------------------" + name);
+        //print(r);
+        // fix: unknown usb device product is NULL
+        var name = (r['product'] ?? r['name']) ?? 'unknown device';
         yield PrinterDevice(
-          name: r['product'],
+          name: name,
           vendorId: r['vendorId'],
           productId: r['productId'],
           // name: r['name'],

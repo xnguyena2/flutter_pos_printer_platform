@@ -82,3 +82,7 @@
 ## 1.1.8
 
 - Fix android reciver postcast
+
+## 1.2.0
+
+- Bump to v1.2.0
