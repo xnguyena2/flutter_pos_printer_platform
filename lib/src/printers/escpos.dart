@@ -2,7 +2,7 @@ import 'dart:typed_data';
 
 import 'package:flutter_pos_printer_platform_image_3_sdt/printer.dart';
 import 'package:flutter_pos_printer_platform_image_3_sdt/src/utils.dart';
-import 'package:image_v3/image_v3.dart';
+import 'package:image/image.dart' as img;
 
 class EscPosPrinter<T> extends GenericPrinter<T> {
   EscPosPrinter(PrinterConnector<T> connector, T model,
@@ -21,7 +21,7 @@ class EscPosPrinter<T> extends GenericPrinter<T> {
 
   @override
   Future<bool> image(Uint8List image, {int threshold = 150}) async {
-    final decodedImage = decodeImage(image)!;
+    final decodedImage = img.decodeImage(image)!;
 
     final converted = toPixel(
         ImageData(width: decodedImage.width, height: decodedImage.height),

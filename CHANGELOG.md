@@ -86,3 +86,8 @@
 ## 1.2.0
 
 - Bump to v1.2.0
+
+## 1.2.1
+
+- change back to image and add utils to folder
+- fix raseter image
