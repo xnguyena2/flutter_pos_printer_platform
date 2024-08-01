@@ -91,3 +91,7 @@
 
 - change back to image and add utils to folder
 - fix raseter image
+
+## 1.2.2
+
+- fix capacity path file

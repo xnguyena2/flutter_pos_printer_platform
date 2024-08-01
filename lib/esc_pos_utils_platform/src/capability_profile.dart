@@ -13,7 +13,7 @@ class CapabilityProfile {
   /// Public factory
   static Future<CapabilityProfile> load({String name = 'default'}) async {
     final content = await rootBundle.loadString(
-        'packages/flutter_esc_pos_utils/resources/capabilities.json');
+        'packages/flutter_pos_printer_platform_image_3_sdt/resources/capabilities.json');
     Map capabilities = json.decode(content);
 
     var profile = capabilities['profiles'][name];
@@ -44,7 +44,7 @@ class CapabilityProfile {
 
   static Future<List<dynamic>> getAvailableProfiles() async {
     final content = await rootBundle.loadString(
-        'packages/flutter_esc_pos_utils/resources/capabilities.json');
+        'packages/flutter_pos_printer_platform_image_3_sdt/resources/capabilities.json');
     Map capabilities = json.decode(content);
 
     var profiles = capabilities['profiles'];
