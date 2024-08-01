@@ -139,12 +139,12 @@ class Generator {
     final int heightPx = image.height;
 
     // Create a black bottom layer
-    final biggerImage = copyResize(image,
+    Image biggerImage = copyResize(image,
         width: widthPx, height: heightPx, interpolation: Interpolation.linear);
     //fill(biggerImage, color: ColorRgb8(0, 0, 0));
-    fill(biggerImage, color: ColorRgb8(0, 0, 0));
+    biggerImage = fill(biggerImage, color: ColorRgb8(0, 0, 0));
     // Insert source image into bigger one
-    compositeImage(biggerImage, image, dstX: 0, dstY: 0);
+    biggerImage = compositeImage(biggerImage, image, dstX: 0, dstY: 0);
 
     int left = 0;
     final List<List<int>> blobs = [];
@@ -166,33 +166,46 @@ class Generator {
   /// Image rasterization
   List<int> _toRasterFormat(Image imgSrc) {
     final Image image = Image.from(imgSrc); // make a copy
-    final int widthPx = image.width;
+    // final int widthPx = image.width;
     final int heightPx = image.height;
 
-    grayscale(image);
-    invert(image);
+    // Determine new width: closest integer that is divisible by lineHeight
+    final int targetWidth = (image.width + 8) - (image.width % 8);
+
+    // Create a black bottom layer
+    Image biggerImage = copyResize(image,
+        width: targetWidth,
+        height: heightPx,
+        interpolation: Interpolation.linear);
+    //fill(biggerImage, color: ColorRgb8(0, 0, 0));
+    biggerImage = fill(biggerImage, color: ColorRgb8(0, 0, 0));
+    // Insert source image into bigger one
+    biggerImage = compositeImage(biggerImage, image, dstX: 0, dstY: 0);
+
+    biggerImage = grayscale(biggerImage);
+    biggerImage = invert(biggerImage);
 
     // R/G/B channels are same -> keep only one channel
     List<int> oneChannelBytes = [];
-    final List<int> buffer = image.getBytes(order: ChannelOrder.rgba);
+    final List<int> buffer = biggerImage.getBytes(order: ChannelOrder.rgba);
     for (int i = 0; i < buffer.length; i += 4) {
       oneChannelBytes.add(buffer[i]);
     }
 
-    // Add some empty pixels at the end of each line (to make the width divisible by 8)
-    if (widthPx % 8 != 0) {
-      final targetWidth = (widthPx + 8) - (widthPx % 8);
-      final missingPx = targetWidth - widthPx;
-      final extra = Uint8List(missingPx);
+    // // Add some empty pixels at the end of each line (to make the width divisible by 8)
+    // if (widthPx % 8 != 0) {
+    //   final targetWidth = (widthPx + 8) - (widthPx % 8);
+    //   final missingPx = targetWidth - widthPx;
+    //   final extra = Uint8List(missingPx);
 
-      // oneChannelBytes = List<int>.filled(heightPx * targetWidth, 0);
+    //   // oneChannelBytes = List<int>.filled(heightPx * targetWidth, 0);
 
-      for (int i = 0; i < heightPx; i++) {
-        final pos =
-            (i * widthPx) + i * missingPx; // Corrected position calculation
-        oneChannelBytes.insertAll(pos, extra);
-      }
-    }
+    //   for (int i = 0; i < heightPx; i++) {
+    //     final pos =
+    //         (i * widthPx) + i * missingPx; // Corrected position calculation
+    //     oneChannelBytes.insertAll(pos, extra);
+    //   }
+    // }
 
     //  if (widthPx % 8 != 0) {
     //   final targetWidth = (widthPx + 8) - (widthPx % 8);
@@ -615,8 +628,8 @@ class Generator {
     bool highDensityHorizontal = isDoubleDensity;
     bool highDensityVertical = isDoubleDensity;
 
-    invert(image);
-    flipHorizontal(image);
+    image = invert(image);
+    image = flipHorizontal(image);
     final Image imageRotated = copyRotate(image, angle: 270);
 
     int lineHeight = highDensityVertical ? 3 : 1;

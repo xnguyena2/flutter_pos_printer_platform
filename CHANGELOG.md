@@ -95,3 +95,7 @@
 ## 1.2.2
 
 - fix capacity path file
+
+## 1.2.3
+
+- fix razter img
