@@ -99,3 +99,11 @@
 ## 1.2.3
 
 - fix razter img
+
+## 1.2.4
+
+- fix razter img
+
+## 1.2.5
+
+- fix razter img
