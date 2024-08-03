@@ -134,8 +134,10 @@ class Generator {
   List<List<int>> _toColumnFormat(Image imgSrc, int lineHeight) {
     final Image image = Image.from(imgSrc); // make a copy
 
-    // Determine new width: closest integer that is divisible by lineHeight
-    final int widthPx = (image.width + lineHeight) - (image.width % lineHeight);
+    // Determine new width: closest integer that is divisible by lineHeight, if diviable 8 then keep it
+    final int widthPx = image.width % 8 == 0
+        ? image.width
+        : (image.width + lineHeight) - (image.width % lineHeight);
     final int heightPx = image.height;
 
     // Create a black bottom layer
@@ -169,8 +171,10 @@ class Generator {
     // final int widthPx = image.width;
     final int heightPx = image.height;
 
-    // Determine new width: closest integer that is divisible by lineHeight
-    final int targetWidth = (image.width + 8) - (image.width % 8);
+    // Determine new width: closest integer that is divisible by lineHeight, if not diviable 8 then increase
+    final int targetWidth = image.width % 8 == 0
+        ? image.width
+        : (image.width + 8) - (image.width % 8);
 
     // Create a black bottom layer
     Image biggerImage = copyResize(image,
@@ -679,7 +683,10 @@ class Generator {
 
     final int widthPx = image.width;
     final int heightPx = image.height;
-    final int widthBytes = (widthPx + 7) ~/ 8;
+
+    //if diviable for 8 then keep value, if not increase
+    final int widthBytes = widthPx % 8 == 0 ? widthPx : (widthPx + 7) ~/ 8;
+
     final List<int> rasterizedData = _toRasterFormat(image);
 
     if (imageFn == PosImageFn.bitImageRaster) {

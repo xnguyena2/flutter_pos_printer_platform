@@ -107,3 +107,7 @@
 ## 1.2.5
 
 - fix razter img
+
+## 1.2.6
+
+- fix razter img
