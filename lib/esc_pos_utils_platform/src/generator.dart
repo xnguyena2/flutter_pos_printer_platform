@@ -135,7 +135,7 @@ class Generator {
     final Image image = Image.from(imgSrc); // make a copy
 
     // Determine new width: closest integer that is divisible by lineHeight, if diviable 8 then keep it
-    final int widthPx = image.width % 8 == 0
+    final int widthPx = image.width % lineHeight == 0
         ? image.width
         : (image.width + lineHeight) - (image.width % lineHeight);
     final int heightPx = image.height;
@@ -685,7 +685,7 @@ class Generator {
     final int heightPx = image.height;
 
     //if diviable for 8 then keep value, if not increase
-    final int widthBytes = widthPx % 8 == 0 ? widthPx : (widthPx + 7) ~/ 8;
+    final int widthBytes = (widthPx % 8 == 0 ? widthPx : (widthPx + 7)) ~/ 8;
 
     final List<int> rasterizedData = _toRasterFormat(image);
 
