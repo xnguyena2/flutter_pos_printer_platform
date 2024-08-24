@@ -115,3 +115,7 @@
 ## 1.2.7
 
 - fix razter img
+
+## 1.2.8
+
+- fix android scan bluetooth recurise overflow permission

@@ -455,8 +455,10 @@ class FlutterPosPrinterPlatformPlugin : FlutterPlugin, MethodCallHandler, Plugin
                 if (!grant) {
                     Toast.makeText(context, R.string.not_permissions, Toast.LENGTH_LONG).show()
                 } else {
-                    if (verifyIsBluetoothIsOn() && isScan)
+                    if (isScan && verifyIsBluetoothIsOn()) {
+                        isScan = false
                         if (isBle) bluetoothService.scanBleDevice(channel) else bluetoothService.scanBluDevice(channel)
+                    }
                 }
                 return true
             }
