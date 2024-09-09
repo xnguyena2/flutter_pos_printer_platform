@@ -119,3 +119,7 @@
 ## 1.2.8
 
 - fix android scan bluetooth recurise overflow permission
+
+## 1.2.9
+
+- fix android grandle

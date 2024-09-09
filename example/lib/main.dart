@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'dart:developer';
 import 'dart:io';
-import 'package:esc_pos_utils/esc_pos_utils.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_esc_pos_utils/flutter_esc_pos_utils.dart';
 import 'package:flutter_pos_printer_platform_image_3_sdt/flutter_pos_printer_platform_image_3_sdt.dart';
 
 void main() {
