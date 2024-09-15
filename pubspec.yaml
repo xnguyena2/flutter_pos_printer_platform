@@ -11,6 +11,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_web_plugins:
+    sdk: flutter
 
   # flutter_star_prnt: ^2.3.6
   enum_to_string: ^2.0.1
@@ -23,6 +25,8 @@ dependencies:
   hex: ^0.2.0
   gbk_codec: ^0.4.0
   image: ^4.2.0
+
+  web: ^1.0.0
 
 dev_dependencies:
   flutter_test:
@@ -46,6 +50,9 @@ flutter:
         pluginClass: FlutterPosPrinterPlatformPlugin
       windows:
         pluginClass: FlutterPosPrinterPlatformPlugin
+      web:
+        pluginClass: FlutterPosPrinterPlatformWeb
+        fileName: flutter_pos_printer_platform_web.dart
 
   # To add assets to your plugin package, add an assets section, like this:
   assets:
