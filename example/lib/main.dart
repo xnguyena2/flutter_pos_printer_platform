@@ -50,6 +50,20 @@ class _MyAppState extends State<MyApp> {
     _subscriptionBtStatus =
         PrinterManager.instance.stateBluetooth.listen((status) {
       log(' ----------------- status bt $status ------------------ ');
+      if (kIsWeb) {
+        final newBleDevice = printerManager.getWebBleDevice();
+        if (newBleDevice != null) {
+          devices.add(BluetoothPrinter(
+            deviceName: newBleDevice.name,
+            address: newBleDevice.address,
+            isBle: _isBle,
+            vendorId: newBleDevice.vendorId,
+            productId: newBleDevice.productId,
+            typePrinter: defaultPrinterType,
+          ));
+          setState(() {});
+        }
+      }
       _currentStatus = status;
       if (status == BTStatus.connected) {
         setState(() {
@@ -163,7 +177,8 @@ class _MyAppState extends State<MyApp> {
   void selectDevice(BluetoothPrinter device) async {
     if (selectedPrinter != null) {
       if ((device.address != selectedPrinter!.address) ||
-          (device.typePrinter == PrinterType.usb &&
+          (!kIsWeb &&
+              device.typePrinter == PrinterType.usb &&
               selectedPrinter!.vendorId != device.vendorId)) {
         await PrinterManager.instance
             .disconnect(type: selectedPrinter!.typePrinter);
@@ -217,7 +232,7 @@ class _MyAppState extends State<MyApp> {
                 isBle: bluetoothPrinter.isBle ?? false,
                 autoConnect: _reconnect));
         pendingTask = null;
-        if (Platform.isAndroid) pendingTask = bytes;
+        if (kIsWeb || Platform.isAndroid) pendingTask = bytes;
         break;
       case PrinterType.network:
         bytes += generator.feed(2);
@@ -229,7 +244,7 @@ class _MyAppState extends State<MyApp> {
       default:
     }
     if (bluetoothPrinter.typePrinter == PrinterType.bluetooth &&
-        Platform.isAndroid) {
+        (kIsWeb || Platform.isAndroid)) {
       if (_currentStatus == BTStatus.connected) {
         printerManager.send(type: bluetoothPrinter.typePrinter, bytes: bytes);
         pendingTask = null;
@@ -307,16 +322,22 @@ class _MyAppState extends State<MyApp> {
                         const SizedBox(width: 8),
                         Expanded(
                           child: ElevatedButton(
-                            onPressed: selectedPrinter == null || !_isConnected
-                                ? null
-                                : () {
-                                    if (selectedPrinter != null)
+                            onPressed: (kIsWeb && _isConnected) ||
+                                    selectedPrinter != null ||
+                                    _isConnected
+                                ? () {
+                                    if ((kIsWeb && _isConnected) ||
+                                        selectedPrinter != null) {
                                       printerManager.disconnect(
-                                          type: selectedPrinter!.typePrinter);
+                                          type: selectedPrinter == null
+                                              ? defaultPrinterType
+                                              : selectedPrinter!.typePrinter);
+                                    }
                                     setState(() {
                                       _isConnected = false;
                                     });
-                                  },
+                                  }
+                                : null,
                             child: const Text("Disconnect",
                                 textAlign: TextAlign.center),
                           ),
@@ -369,6 +390,7 @@ class _MyAppState extends State<MyApp> {
                   ),
                   Visibility(
                     visible: defaultPrinterType == PrinterType.bluetooth &&
+                        !kIsWeb &&
                         Platform.isAndroid,
                     child: SwitchListTile.adaptive(
                       contentPadding:
@@ -390,7 +412,8 @@ class _MyAppState extends State<MyApp> {
                     ),
                   ),
                   Visibility(
-                    visible: defaultPrinterType == PrinterType.bluetooth &&
+                    visible: !kIsWeb &&
+                        defaultPrinterType == PrinterType.bluetooth &&
                         Platform.isAndroid,
                     child: SwitchListTile.adaptive(
                       contentPadding:
@@ -413,11 +436,12 @@ class _MyAppState extends State<MyApp> {
                         .map(
                           (device) => ListTile(
                             title: Text('${device.deviceName}'),
-                            subtitle: Platform.isAndroid &&
+                            subtitle: !kIsWeb &&
+                                    Platform.isAndroid &&
                                     defaultPrinterType == PrinterType.usb
                                 ? null
                                 : Visibility(
-                                    visible: !Platform.isWindows,
+                                    visible: kIsWeb || !Platform.isWindows,
                                     child: Text("${device.address}")),
                             onTap: () {
                               // do something
@@ -425,7 +449,7 @@ class _MyAppState extends State<MyApp> {
                             },
                             leading: selectedPrinter != null &&
                                     ((device.typePrinter == PrinterType.usb &&
-                                                Platform.isWindows
+                                                (kIsWeb || Platform.isWindows)
                                             ? device.deviceName ==
                                                 selectedPrinter!.deviceName
                                             : device.vendorId != null &&
@@ -544,6 +568,11 @@ class _MyAppState extends State<MyApp> {
                       ),
                     )
                   ],
+                  if (defaultPrinterType == PrinterType.bluetooth &&
+                      kIsWeb) ...[
+                    SelectableText(
+                        'Inspect bluetooth devices: about://bluetooth-internals#devices'),
+                  ]
                 ],
               ),
             ),

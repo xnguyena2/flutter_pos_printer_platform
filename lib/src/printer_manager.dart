@@ -19,7 +19,7 @@ class PrinterManager {
   Stream<PrinterDevice> discovery(
       {required PrinterType type, bool isBle = false, TcpPrinterInput? model}) {
     if (type == PrinterType.bluetooth &&
-        (Platform.isIOS || Platform.isAndroid)) {
+        (kIsWeb || Platform.isIOS || Platform.isAndroid)) {
       return bluetoothPrinterConnector.discovery(isBle: isBle);
     } else if (type == PrinterType.usb &&
         (kIsWeb || Platform.isAndroid || Platform.isWindows)) {
@@ -32,7 +32,7 @@ class PrinterManager {
   Future<bool> connect(
       {required PrinterType type, required BasePrinterInput model}) async {
     if (type == PrinterType.bluetooth &&
-        (Platform.isIOS || Platform.isAndroid)) {
+        (kIsWeb || Platform.isIOS || Platform.isAndroid)) {
       try {
         var conn = await bluetoothPrinterConnector
             .connect(model as BluetoothPrinterInput);
@@ -60,7 +60,7 @@ class PrinterManager {
 
   Future<bool> disconnect({required PrinterType type, int? delayMs}) async {
     if (type == PrinterType.bluetooth &&
-        (Platform.isIOS || Platform.isAndroid)) {
+        (kIsWeb || Platform.isIOS || Platform.isAndroid)) {
       return await bluetoothPrinterConnector.disconnect();
     } else if (type == PrinterType.usb &&
         (kIsWeb || Platform.isAndroid || Platform.isWindows)) {
@@ -73,7 +73,7 @@ class PrinterManager {
   Future<bool> send(
       {required PrinterType type, required List<int> bytes}) async {
     if (type == PrinterType.bluetooth &&
-        (Platform.isIOS || Platform.isAndroid)) {
+        (kIsWeb || Platform.isIOS || Platform.isAndroid)) {
       return await bluetoothPrinterConnector.send(bytes);
     } else if (type == PrinterType.usb && kIsWeb ||
         (Platform.isAndroid || Platform.isWindows)) {
@@ -82,6 +82,9 @@ class PrinterManager {
       return await tcpPrinterConnector.send(bytes);
     }
   }
+
+  PrinterDevice? getWebBleDevice() =>
+      bluetoothPrinterConnector.getWebBleDevice();
 
   Stream<BTStatus> get stateBluetooth =>
       bluetoothPrinterConnector.currentStatus.cast<BTStatus>();

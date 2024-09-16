@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_pos_printer_platform_image_3_sdt/discovery.dart';
 import 'package:flutter_pos_printer_platform_image_3_sdt/flutter_pos_printer_platform_image_3_sdt.dart';
 import 'package:rxdart/rxdart.dart';
+import 'package:universal_ble/universal_ble.dart';
 
 class BluetoothPrinterInput extends BasePrinterInput {
   final String address;
@@ -31,6 +32,42 @@ class BluetoothPrinterConnector
   // ignore: unused_element
   BluetoothPrinterConnector._({this.address = "", this.isBle = false}) {
     if (kIsWeb) {
+      // Get connection/disconnection updates
+      UniversalBle.onConnectionChange = (String deviceId, bool isConnected) {
+        debugPrint('OnConnectionChange $deviceId, $isConnected');
+
+        if (deviceId == bleDevice?.deviceId) {
+          // log('Received event status: $data');
+
+          if (isConnected) {
+            UniversalBle.discoverServices(deviceId).then(
+              (value) {
+                for (var element in value) {
+                  if (element.uuid.toUpperCase() == printingServicesUUID) {
+                    for (var element in element.characteristics) {
+                      if (element.properties.contains(
+                          CharacteristicProperty.writeWithoutResponse)) {
+                        // print('servicesUUID: $printingServicesUUID');
+                        // print('characteristicUUID: ${element.uuid}');
+                        _characteristicUUID = element.uuid;
+                        bleHavePrintingServices = true;
+
+                        _status =
+                            isConnected ? BTStatus.connected : BTStatus.none;
+                        _statusStreamController.add(_status);
+                      }
+                    }
+                  }
+                }
+              },
+            );
+            return;
+          }
+          bleHavePrintingServices = false;
+          _status = isConnected ? BTStatus.connected : BTStatus.none;
+          _statusStreamController.add(_status);
+        }
+      };
       return;
     }
     if (Platform.isAndroid)
@@ -93,6 +130,14 @@ class BluetoothPrinterConnector
     });
   }
 
+  static final String printingServicesUUID =
+      'E7810A71-73AE-499D-8C15-FAA9AEF0C3F2';
+  static final String characteristicUUID =
+      'BEF8D6C9-9C21-4C9E-B632-BD58C1009F9F';
+  BleDevice? bleDevice;
+  bool bleHavePrintingServices = false;
+  String _characteristicUUID = '';
+
   String address;
   String? name;
   bool isBle;
@@ -107,6 +152,24 @@ class BluetoothPrinterConnector
 
   static DiscoverResult<BluetoothPrinterDevice> discoverPrinters(
       {bool isBle = false}) async {
+    if (kIsWeb) {
+      AvailabilityState state =
+          await UniversalBle.getBluetoothAvailabilityState();
+// Start scan only if Bluetooth is powered on
+      if (state == AvailabilityState.poweredOn) {
+        final listBleDevice = await UniversalBle.getSystemDevices();
+
+        return listBleDevice
+            .map((BleDevice r) => PrinterDiscovered<BluetoothPrinterDevice>(
+                  name: r.name ?? r.deviceId,
+                  detail: BluetoothPrinterDevice(
+                    address: r.deviceId,
+                  ),
+                ))
+            .toList();
+      }
+      return [];
+    }
     if (Platform.isAndroid) {
       final List<dynamic> results = isBle
           ? await flutterPrinterChannel.invokeMethod('getBluetoothLeList')
@@ -136,7 +199,50 @@ class BluetoothPrinterConnector
     // Clear scan results list
     _scanResults.add(<PrinterDevice>[]);
 
-    if (Platform.isAndroid) {
+    if (kIsWeb) {
+      AvailabilityState state =
+          await UniversalBle.getBluetoothAvailabilityState();
+// Start scan only if Bluetooth is powered on
+      if (state == AvailabilityState.poweredOn) {
+        UniversalBle.startScan(
+            scanFilter: ScanFilter(
+          withServices: [printingServicesUUID],
+        )).onError(
+          (error, stackTrace) {
+            // print(error);
+            // print(stackTrace);
+          },
+        ).catchError((e) {
+          // print(e);
+        });
+        // scan result
+        UniversalBle.onScanResult = (bleDevice) {
+          this.bleDevice = bleDevice;
+          String deviceId = bleDevice.deviceId;
+          UniversalBle.connect(deviceId);
+          // e.g. Use BleDevice ID to connect
+          // print('found device: ');
+          // print(bleDevice);
+          var device = PrinterDevice.web(
+              name: bleDevice.name ?? bleDevice.deviceId,
+              address: bleDevice.deviceId);
+          if (!_addDevice(device)) return;
+          // yield device;
+        };
+      }
+
+// Or listen to bluetooth availability changes
+      // UniversalBle.onAvailabilityChange = (state) {
+      //   if (state == AvailabilityState.poweredOn) {
+      //     UniversalBle.startScan(
+      //         scanFilter: ScanFilter(
+      //       withServices: [printingServicesUUID],
+      //     ));
+      //   }
+      // };
+// Enable Bluetooth programmatically
+      // UniversalBle.enableBluetooth();
+    } else if (Platform.isAndroid) {
       isBle
           ? flutterPrinterChannel.invokeMethod('getBluetoothLeList')
           : flutterPrinterChannel.invokeMethod('getBluetoothList');
@@ -199,13 +305,22 @@ class BluetoothPrinterConnector
 
   /// Stops a scan for Bluetooth Low Energy devices
   Future stopScan() async {
-    if (Platform.isIOS) await iosChannel.invokeMethod('stopScan');
+    if (kIsWeb) {
+// Stop scanning
+      UniversalBle.stopScan();
+    } else if (Platform.isIOS) await iosChannel.invokeMethod('stopScan');
     _stopScanPill.add(null);
     _isScanning.add(false);
   }
 
   Future<bool> _connect({BluetoothPrinterInput? model}) async {
-    if (Platform.isAndroid) {
+    if (kIsWeb) {
+      String? deviceId = model?.address;
+      if (deviceId != null) {
+        UniversalBle.connect(deviceId);
+      }
+      return true;
+    } else if (Platform.isAndroid) {
       Map<String, dynamic> params = {
         "address": model?.address ?? address,
         "isBle": model?.isBle ?? isBle,
@@ -239,9 +354,24 @@ class BluetoothPrinterConnector
     }*/
   }
 
+  PrinterDevice? getWebBleDevice() {
+    if (bleDevice == null) {
+      return null;
+    }
+    return PrinterDevice.web(
+        name: bleDevice!.name ?? bleDevice!.deviceId,
+        address: bleDevice!.deviceId);
+  }
+
   @override
   Future<bool> disconnect({int? delayMs}) async {
-    if (Platform.isAndroid)
+    if (kIsWeb) {
+// Disconnect from a device
+      final deviceId = bleDevice?.deviceId;
+      if (deviceId != null) {
+        UniversalBle.disconnect(deviceId);
+      }
+    } else if (Platform.isAndroid)
       await flutterPrinterChannel.invokeMethod('disconnect');
     else if (Platform.isIOS) await iosChannel.invokeMethod('disconnect');
     return false;
@@ -252,7 +382,16 @@ class BluetoothPrinterConnector
   @override
   Future<bool> send(List<int> bytes) async {
     try {
-      if (Platform.isAndroid) {
+      if (kIsWeb) {
+        //send data to bluetooth device
+        final deviceId = bleDevice?.deviceId;
+        if (deviceId != null && bleHavePrintingServices) {
+          final data = Uint8List.fromList(bytes);
+          UniversalBle.writeValue(deviceId, printingServicesUUID,
+              _characteristicUUID, data, BleOutputProperty.withoutResponse);
+        }
+        return true;
+      } else if (Platform.isAndroid) {
         // final connected = await _connect();
         // if (!connected) return false;
         Map<String, dynamic> params = {"bytes": bytes};
