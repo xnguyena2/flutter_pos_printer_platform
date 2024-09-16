@@ -197,7 +197,7 @@ class _MyAppState extends State<MyApp> {
 
     switch (bluetoothPrinter.typePrinter) {
       case PrinterType.usb:
-        // bytes += generator.feed(2);
+        bytes += generator.feed(2);
         bytes += generator.cut();
         await printerManager.connect(
             type: bluetoothPrinter.typePrinter,
