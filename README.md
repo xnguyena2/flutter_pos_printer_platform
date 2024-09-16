@@ -196,3 +196,6 @@ get vendorID and productID at: chrome://device-log
 
 inspect bluetooth device at: about://bluetooth-internals#devices
 services UUID: https://github.com/WebBluetoothCG/registries/blob/master/gatt_assigned_services.txt
+
+var serviceUUID = NSUUID(UUIDString: "E7810A71-73AE-499D-8C15-FAA9AEF0C3F2")
+var characteristicUUID = NSUUID(UUIDString: "BEF8D6C9-9C21-4C9E-B632-BD58C1009F9F")
