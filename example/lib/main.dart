@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:developer';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_pos_printer_platform_image_3_sdt/esc_pos_utils_platform/flutter_esc_pos_utils.dart';
 import 'package:flutter_pos_printer_platform_image_3_sdt/flutter_pos_printer_platform_image_3_sdt.dart';
@@ -40,7 +41,7 @@ class _MyAppState extends State<MyApp> {
 
   @override
   void initState() {
-    if (Platform.isWindows) defaultPrinterType = PrinterType.usb;
+    if (kIsWeb || Platform.isWindows) defaultPrinterType = PrinterType.usb;
     super.initState();
     _portController.text = _port;
     _scan();
@@ -320,12 +321,12 @@ class _MyAppState extends State<MyApp> {
                       enabledBorder: InputBorder.none,
                     ),
                     items: <DropdownMenuItem<PrinterType>>[
-                      if (Platform.isAndroid || Platform.isIOS)
+                      if (!kIsWeb && (Platform.isAndroid || Platform.isIOS))
                         const DropdownMenuItem(
                           value: PrinterType.bluetooth,
                           child: Text("bluetooth"),
                         ),
-                      if (Platform.isAndroid || Platform.isWindows)
+                      if (kIsWeb || Platform.isAndroid || Platform.isWindows)
                         const DropdownMenuItem(
                           value: PrinterType.usb,
                           child: Text("usb"),
@@ -441,7 +442,7 @@ class _MyAppState extends State<MyApp> {
                           .toList()),
                   Visibility(
                     visible: defaultPrinterType == PrinterType.network &&
-                        Platform.isWindows,
+                        (kIsWeb || Platform.isWindows),
                     child: Padding(
                       padding: const EdgeInsets.only(top: 10.0),
                       child: TextFormField(
@@ -458,7 +459,7 @@ class _MyAppState extends State<MyApp> {
                   ),
                   Visibility(
                     visible: defaultPrinterType == PrinterType.network &&
-                        Platform.isWindows,
+                        (kIsWeb || Platform.isWindows),
                     child: Padding(
                       padding: const EdgeInsets.only(top: 10.0),
                       child: TextFormField(
@@ -475,13 +476,11 @@ class _MyAppState extends State<MyApp> {
                   ),
                   Visibility(
                     visible: defaultPrinterType == PrinterType.network &&
-                        Platform.isWindows,
+                        (kIsWeb || Platform.isWindows),
                     child: Padding(
                       padding: const EdgeInsets.only(top: 10.0),
                       child: OutlinedButton(
                         onPressed: () async {
-                          if (_ipController.text.isNotEmpty)
-                            setIpAddress(_ipController.text);
                           _printReceiveTest();
                         },
                         child: const Padding(

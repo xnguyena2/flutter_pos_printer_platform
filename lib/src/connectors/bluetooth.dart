@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_pos_printer_platform_image_3_sdt/discovery.dart';
 import 'package:flutter_pos_printer_platform_image_3_sdt/flutter_pos_printer_platform_image_3_sdt.dart';
@@ -29,6 +30,9 @@ class BluetoothPrinterConnector
     implements PrinterConnector<BluetoothPrinterInput> {
   // ignore: unused_element
   BluetoothPrinterConnector._({this.address = "", this.isBle = false}) {
+    if (kIsWeb) {
+      return;
+    }
     if (Platform.isAndroid)
       flutterPrinterChannel.setMethodCallHandler((MethodCall call) {
         _methodStreamController.add(call);

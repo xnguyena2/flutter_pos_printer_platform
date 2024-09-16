@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_pos_printer_platform_image_3_sdt/discovery.dart';
 import 'package:flutter_pos_printer_platform_image_3_sdt/flutter_pos_printer_platform_image_3_sdt.dart';
 
@@ -50,6 +51,9 @@ class UsbPrinterConnector implements PrinterConnector<UsbPrinterInput> {
       : vendorId = '',
         productId = '',
         name = '' {
+    if (kIsWeb) {
+      return;
+    }
     if (Platform.isAndroid)
       flutterPrinterEventChannelUSB.receiveBroadcastStream().listen((data) {
         if (data is int) {
@@ -86,7 +90,7 @@ class UsbPrinterConnector implements PrinterConnector<UsbPrinterInput> {
 
   /// Gets the current state of the Bluetooth module
   Stream<USBStatus> get currentStatus async* {
-    if (Platform.isAndroid) {
+    if (kIsWeb || Platform.isAndroid) {
       yield* _statusStream.cast<USBStatus>();
     }
   }
@@ -126,7 +130,9 @@ class UsbPrinterConnector implements PrinterConnector<UsbPrinterInput> {
   }
 
   Stream<PrinterDevice> discovery() async* {
-    if (Platform.isAndroid) {
+    if (kIsWeb) {
+      //Ignore web
+    } else if (Platform.isAndroid) {
       final List<dynamic> results =
           await flutterPrinterChannel.invokeMethod('getList');
       for (final device in results) {

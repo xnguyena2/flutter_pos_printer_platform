@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_pos_printer_platform_image_3_sdt/flutter_pos_printer_platform_image_3_sdt.dart';
 
 enum PrinterType { bluetooth, usb, network }
@@ -21,7 +22,7 @@ class PrinterManager {
         (Platform.isIOS || Platform.isAndroid)) {
       return bluetoothPrinterConnector.discovery(isBle: isBle);
     } else if (type == PrinterType.usb &&
-        (Platform.isAndroid || Platform.isWindows)) {
+        (kIsWeb || Platform.isAndroid || Platform.isWindows)) {
       return usbPrinterConnector.discovery();
     } else {
       return tcpPrinterConnector.discovery(model: model);

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_pos_printer_platform_image_3_sdt/src/models/printer_device.dart';
 import 'package:network_info_plus/network_info_plus.dart';
 
@@ -38,6 +39,10 @@ class TcpPrinterConnector implements PrinterConnector<TcpPrinterInput> {
 
   static Future<List<PrinterDiscovered<TcpPrinterInfo>>> discoverPrinters(
       {String? ipAddress, int? port, Duration? timeOut}) async {
+    if (kIsWeb) {
+      //Web not suport scann
+      return [];
+    }
     final List<PrinterDiscovered<TcpPrinterInfo>> result = [];
     final defaultPort = port ?? 9100;
 
@@ -69,6 +74,10 @@ class TcpPrinterConnector implements PrinterConnector<TcpPrinterInput> {
 
   /// Starts a scan for network printers.
   Stream<PrinterDevice> discovery({TcpPrinterInput? model}) async* {
+    if (kIsWeb) {
+      //Web not suport scann
+      return;
+    }
     final defaultPort = model?.port ?? 9100;
 
     String? deviceIp;
