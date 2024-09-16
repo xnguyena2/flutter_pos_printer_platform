@@ -41,7 +41,7 @@ class PrinterManager {
         throw Exception('model must be type of BluetoothPrinterInput');
       }
     } else if (type == PrinterType.usb &&
-        (Platform.isAndroid || Platform.isWindows)) {
+        (kIsWeb || Platform.isAndroid || Platform.isWindows)) {
       try {
         var conn = await usbPrinterConnector.connect(model as UsbPrinterInput);
         return conn;
@@ -63,7 +63,7 @@ class PrinterManager {
         (Platform.isIOS || Platform.isAndroid)) {
       return await bluetoothPrinterConnector.disconnect();
     } else if (type == PrinterType.usb &&
-        (Platform.isAndroid || Platform.isWindows)) {
+        (kIsWeb || Platform.isAndroid || Platform.isWindows)) {
       return await usbPrinterConnector.disconnect(delayMs: delayMs);
     } else {
       return await tcpPrinterConnector.disconnect();
@@ -75,7 +75,7 @@ class PrinterManager {
     if (type == PrinterType.bluetooth &&
         (Platform.isIOS || Platform.isAndroid)) {
       return await bluetoothPrinterConnector.send(bytes);
-    } else if (type == PrinterType.usb &&
+    } else if (type == PrinterType.usb && kIsWeb ||
         (Platform.isAndroid || Platform.isWindows)) {
       return await usbPrinterConnector.send(bytes);
     } else {

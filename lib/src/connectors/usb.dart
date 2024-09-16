@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_pos_printer_platform_image_3_sdt/discovery.dart';
 import 'package:flutter_pos_printer_platform_image_3_sdt/flutter_pos_printer_platform_image_3_sdt.dart';
+import 'package:usb_device/usb_device.dart';
 
 class UsbPrinterInput extends BasePrinterInput {
   final String? name;
@@ -96,7 +97,9 @@ class UsbPrinterConnector implements PrinterConnector<UsbPrinterInput> {
   }
 
   static DiscoverResult<UsbPrinterInfo> discoverPrinters() async {
-    if (Platform.isAndroid) {
+    if (kIsWeb) {
+      //Ignore web
+    } else if (Platform.isAndroid) {
       final List<dynamic> results =
           await flutterPrinterChannel.invokeMethod('getList');
       return results
@@ -161,8 +164,24 @@ class UsbPrinterConnector implements PrinterConnector<UsbPrinterInput> {
     }
   }
 
+  final UsbDevice usbDevice = UsbDevice();
+  var pairedDevice;
+  //By Default, it is usually 0
+  final int interfaceNumber = 0;
+
+  //By Default, it is usually 1
+  final int endpointNumber = 1;
   Future<bool> _connect({UsbPrinterInput? model}) async {
-    if (Platform.isAndroid) {
+    if (kIsWeb) {
+      pairedDevice ??= await usbDevice.requestDevices([
+        DeviceFilter(
+          vendorId: int.parse(model?.vendorId ?? vendorId),
+          productId: int.parse(model?.productId ?? productId),
+        )
+      ]);
+      await usbDevice.open(pairedDevice);
+      await usbDevice.claimInterface(pairedDevice, interfaceNumber);
+    } else if (Platform.isAndroid) {
       Map<String, dynamic> params = {
         "vendor": int.parse(model?.vendorId ?? vendorId),
         "product": int.parse(model?.productId ?? productId)
@@ -180,7 +199,10 @@ class UsbPrinterConnector implements PrinterConnector<UsbPrinterInput> {
   }
 
   Future<bool> _close() async {
-    if (Platform.isWindows)
+    if (kIsWeb) {
+      await usbDevice.close(pairedDevice);
+      return true;
+    } else if (Platform.isWindows)
       return await flutterPrinterChannel.invokeMethod('close') == 1
           ? true
           : false;
@@ -207,7 +229,12 @@ class UsbPrinterConnector implements PrinterConnector<UsbPrinterInput> {
 
   @override
   Future<bool> send(List<int> bytes) async {
-    if (Platform.isAndroid)
+    if (kIsWeb) {
+      final result = await usbDevice.transferOut(
+          pairedDevice, endpointNumber, Uint8List.fromList(bytes).buffer);
+      // print(result.status);
+      return true;
+    } else if (Platform.isAndroid)
       try {
         // final connected = await _connect();
         // if (!connected) return false;

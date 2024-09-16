@@ -144,6 +144,22 @@ class _MyAppState extends State<MyApp> {
     selectDevice(device);
   }
 
+  void setVendorID(String value) {
+    selectedPrinter ??= BluetoothPrinter(
+      state: false,
+    );
+    selectedPrinter!.vendorId = value;
+    selectedPrinter!.typePrinter = PrinterType.usb;
+  }
+
+  void setProudctID(String value) {
+    selectedPrinter ??= BluetoothPrinter(
+      state: false,
+    );
+    selectedPrinter!.productId = value;
+    selectedPrinter!.typePrinter = PrinterType.usb;
+  }
+
   void selectDevice(BluetoothPrinter device) async {
     if (selectedPrinter != null) {
       if ((device.address != selectedPrinter!.address) ||
@@ -181,7 +197,7 @@ class _MyAppState extends State<MyApp> {
 
     switch (bluetoothPrinter.typePrinter) {
       case PrinterType.usb:
-        bytes += generator.feed(2);
+        // bytes += generator.feed(2);
         bytes += generator.cut();
         await printerManager.connect(
             type: bluetoothPrinter.typePrinter,
@@ -321,7 +337,7 @@ class _MyAppState extends State<MyApp> {
                       enabledBorder: InputBorder.none,
                     ),
                     items: <DropdownMenuItem<PrinterType>>[
-                      if (!kIsWeb && (Platform.isAndroid || Platform.isIOS))
+                      if (kIsWeb || Platform.isAndroid || Platform.isIOS)
                         const DropdownMenuItem(
                           value: PrinterType.bluetooth,
                           child: Text("bluetooth"),
@@ -331,10 +347,11 @@ class _MyAppState extends State<MyApp> {
                           value: PrinterType.usb,
                           child: Text("usb"),
                         ),
-                      const DropdownMenuItem(
-                        value: PrinterType.network,
-                        child: Text("Wifi"),
-                      ),
+                      if (!kIsWeb)
+                        const DropdownMenuItem(
+                          value: PrinterType.network,
+                          child: Text("Wifi"),
+                        ),
                     ],
                     onChanged: (PrinterType? value) {
                       setState(() {
@@ -392,58 +409,58 @@ class _MyAppState extends State<MyApp> {
                     ),
                   ),
                   Column(
-                      children: devices
-                          .map(
-                            (device) => ListTile(
-                              title: Text('${device.deviceName}'),
-                              subtitle: Platform.isAndroid &&
-                                      defaultPrinterType == PrinterType.usb
+                    children: devices
+                        .map(
+                          (device) => ListTile(
+                            title: Text('${device.deviceName}'),
+                            subtitle: Platform.isAndroid &&
+                                    defaultPrinterType == PrinterType.usb
+                                ? null
+                                : Visibility(
+                                    visible: !Platform.isWindows,
+                                    child: Text("${device.address}")),
+                            onTap: () {
+                              // do something
+                              selectDevice(device);
+                            },
+                            leading: selectedPrinter != null &&
+                                    ((device.typePrinter == PrinterType.usb &&
+                                                Platform.isWindows
+                                            ? device.deviceName ==
+                                                selectedPrinter!.deviceName
+                                            : device.vendorId != null &&
+                                                selectedPrinter!.vendorId ==
+                                                    device.vendorId) ||
+                                        (device.address != null &&
+                                            selectedPrinter!.address ==
+                                                device.address))
+                                ? const Icon(
+                                    Icons.check,
+                                    color: Colors.green,
+                                  )
+                                : null,
+                            trailing: OutlinedButton(
+                              onPressed: selectedPrinter == null ||
+                                      device.deviceName !=
+                                          selectedPrinter?.deviceName
                                   ? null
-                                  : Visibility(
-                                      visible: !Platform.isWindows,
-                                      child: Text("${device.address}")),
-                              onTap: () {
-                                // do something
-                                selectDevice(device);
-                              },
-                              leading: selectedPrinter != null &&
-                                      ((device.typePrinter == PrinterType.usb &&
-                                                  Platform.isWindows
-                                              ? device.deviceName ==
-                                                  selectedPrinter!.deviceName
-                                              : device.vendorId != null &&
-                                                  selectedPrinter!.vendorId ==
-                                                      device.vendorId) ||
-                                          (device.address != null &&
-                                              selectedPrinter!.address ==
-                                                  device.address))
-                                  ? const Icon(
-                                      Icons.check,
-                                      color: Colors.green,
-                                    )
-                                  : null,
-                              trailing: OutlinedButton(
-                                onPressed: selectedPrinter == null ||
-                                        device.deviceName !=
-                                            selectedPrinter?.deviceName
-                                    ? null
-                                    : () async {
-                                        _printReceiveTest();
-                                      },
-                                child: const Padding(
-                                  padding: EdgeInsets.symmetric(
-                                      vertical: 2, horizontal: 20),
-                                  child: Text("Print test ticket",
-                                      textAlign: TextAlign.center),
-                                ),
+                                  : () async {
+                                      _printReceiveTest();
+                                    },
+                              child: const Padding(
+                                padding: EdgeInsets.symmetric(
+                                    vertical: 2, horizontal: 20),
+                                child: Text("Print test ticket",
+                                    textAlign: TextAlign.center),
                               ),
                             ),
-                          )
-                          .toList()),
-                  Visibility(
-                    visible: defaultPrinterType == PrinterType.network &&
-                        (kIsWeb || Platform.isWindows),
-                    child: Padding(
+                          ),
+                        )
+                        .toList(),
+                  ),
+                  if (defaultPrinterType == PrinterType.network &&
+                      Platform.isWindows) ...[
+                    Padding(
                       padding: const EdgeInsets.only(top: 10.0),
                       child: TextFormField(
                         controller: _ipController,
@@ -456,11 +473,7 @@ class _MyAppState extends State<MyApp> {
                         onChanged: setIpAddress,
                       ),
                     ),
-                  ),
-                  Visibility(
-                    visible: defaultPrinterType == PrinterType.network &&
-                        (kIsWeb || Platform.isWindows),
-                    child: Padding(
+                    Padding(
                       padding: const EdgeInsets.only(top: 10.0),
                       child: TextFormField(
                         controller: _portController,
@@ -473,11 +486,7 @@ class _MyAppState extends State<MyApp> {
                         onChanged: setPort,
                       ),
                     ),
-                  ),
-                  Visibility(
-                    visible: defaultPrinterType == PrinterType.network &&
-                        (kIsWeb || Platform.isWindows),
-                    child: Padding(
+                    Padding(
                       padding: const EdgeInsets.only(top: 10.0),
                       child: OutlinedButton(
                         onPressed: () async {
@@ -490,8 +499,51 @@ class _MyAppState extends State<MyApp> {
                               textAlign: TextAlign.center),
                         ),
                       ),
+                    )
+                  ],
+                  if (defaultPrinterType == PrinterType.usb && kIsWeb) ...[
+                    SelectableText(
+                      'get vendorID and productID at: chrome://device-log',
                     ),
-                  )
+                    Padding(
+                      padding: const EdgeInsets.only(top: 10.0),
+                      child: TextFormField(
+                        keyboardType:
+                            const TextInputType.numberWithOptions(signed: true),
+                        decoration: const InputDecoration(
+                          label: Text("VendorID"),
+                          prefixIcon: Icon(Icons.usb, size: 24),
+                        ),
+                        onChanged: setVendorID,
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(top: 10.0),
+                      child: TextFormField(
+                        keyboardType:
+                            const TextInputType.numberWithOptions(signed: true),
+                        decoration: const InputDecoration(
+                          label: Text("ProductID"),
+                          prefixIcon: Icon(Icons.numbers, size: 24),
+                        ),
+                        onChanged: setProudctID,
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(top: 10.0),
+                      child: OutlinedButton(
+                        onPressed: () async {
+                          _printReceiveTest();
+                        },
+                        child: const Padding(
+                          padding:
+                              EdgeInsets.symmetric(vertical: 4, horizontal: 50),
+                          child: Text("Print test ticket",
+                              textAlign: TextAlign.center),
+                        ),
+                      ),
+                    )
+                  ],
                 ],
               ),
             ),
