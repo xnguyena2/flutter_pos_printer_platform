@@ -52,7 +52,7 @@ class FlutterPosPrinterPlatformPlugin : FlutterPlugin, MethodCallHandler, Plugin
     private var requestPermissionBT: Boolean = false
     private var isBle: Boolean = false
     private var isScan: Boolean = false
-    lateinit var adapter: USBPrinterService
+    private lateinit var adapter: USBPrinterService
     private lateinit var bluetoothService: BluetoothService
 
 
@@ -156,7 +156,7 @@ class FlutterPosPrinterPlatformPlugin : FlutterPlugin, MethodCallHandler, Plugin
 
     }
 
-    override fun onDetachedFromEngine(@NonNull binding: FlutterPlugin.FlutterPluginBinding) {
+    override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
         channel.setMethodCallHandler(null)
         messageChannel?.setStreamHandler(null)
         messageUSBChannel?.setStreamHandler(null)
@@ -168,7 +168,7 @@ class FlutterPosPrinterPlatformPlugin : FlutterPlugin, MethodCallHandler, Plugin
         adapter.setHandler(null)
     }
 
-    override fun onAttachedToEngine(@NonNull flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
+    override fun onAttachedToEngine(flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
         channel = MethodChannel(flutterPluginBinding.binaryMessenger, methodChannel)
         channel.setMethodCallHandler(this)
 
@@ -200,10 +200,10 @@ class FlutterPosPrinterPlatformPlugin : FlutterPlugin, MethodCallHandler, Plugin
         adapter = USBPrinterService.getInstance(usbHandler)
         adapter.init(context)
 
-        bluetoothService = BluetoothService.getInstance(bluetoothHandler)
+        bluetoothService = BluetoothService.getInstance(context!!, bluetoothHandler)
     }
 
-    override fun onMethodCall(@NonNull call: MethodCall, @NonNull result: Result) {
+    override fun onMethodCall(call: MethodCall,result: Result) {
         isScan = false
         when {
             call.method.equals("getBluetoothList") -> {

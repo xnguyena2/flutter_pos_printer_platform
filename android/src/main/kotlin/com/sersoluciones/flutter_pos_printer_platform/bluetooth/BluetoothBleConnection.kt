@@ -2,6 +2,8 @@ package com.sersoluciones.flutter_pos_printer_platform.bluetooth
 
 import android.bluetooth.*
 import android.content.Context
+import android.hardware.usb.UsbDevice
+import android.hardware.usb.UsbManager
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
@@ -50,7 +52,8 @@ class BluetoothBleConnection(
         if (mState == BluetoothConstants.STATE_CONNECTED) return
         state = BluetoothConstants.STATE_CONNECTING
 
-        BluetoothAdapter.getDefaultAdapter()?.let { adapter ->
+        val bluetoothManager = mContext.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
+        bluetoothManager.adapter?.let { adapter ->
             try {
                 val device = adapter.getRemoteDevice(address)
                 val bluetoothGattCallback = ResponseBluetoothGattCallback(result)
@@ -102,6 +105,9 @@ class BluetoothBleConnection(
     }
 
     override fun write(out: ByteArray?) {
+        if(out == null){
+            return
+        }
         mCharacteristic?.let { characteristic ->
 //            val writeType = when {
 //                characteristic.isWritable() -> BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
@@ -112,9 +118,7 @@ class BluetoothBleConnection(
 //            }
 
             bluetoothGatt?.let { gatt ->
-                characteristic.writeType = BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE
-                characteristic.value = out
-                gatt.writeCharacteristic(mCharacteristic)
+                gatt.writeCharacteristic(characteristic, out, BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE)
                 // Share the sent message back to the UI Activity
                 mHandler.obtainMessage(BluetoothConstants.MESSAGE_WRITE, -1, -1, out)
                     .sendToTarget()
@@ -183,18 +187,20 @@ class BluetoothBleConnection(
         override fun onCharacteristicRead(
             gatt: BluetoothGatt,
             characteristic: BluetoothGattCharacteristic,
+            out: ByteArray,
             status: Int
         ) {
             if (status == BluetoothGatt.GATT_SUCCESS) {
-                broadcastUpdate(characteristic)
+                broadcastUpdate(characteristic, out)
             }
         }
 
         override fun onCharacteristicChanged(
             gatt: BluetoothGatt,
-            characteristic: BluetoothGattCharacteristic
+            characteristic: BluetoothGattCharacteristic,
+            out: ByteArray
         ) {
-            broadcastUpdate(characteristic)
+            broadcastUpdate(characteristic, out)
         }
 
         override fun onCharacteristicWrite(
@@ -270,7 +276,7 @@ class BluetoothBleConnection(
     // Read from the InputStream
     private var buffer = ArrayList<Byte>()
 
-    private fun broadcastUpdate(characteristic: BluetoothGattCharacteristic?) {
+    private fun broadcastUpdate(characteristic: BluetoothGattCharacteristic?, out: ByteArray) {
 
         if (characteristic != null) {
             when (characteristic.uuid) {
@@ -279,8 +285,8 @@ class BluetoothBleConnection(
                 }
                 else -> {
                     // For all other profiles, writes the data formatted in HEX.
-                    val data: ByteArray? = characteristic.value
-                    if (data?.isNotEmpty() == true) {
+                    val data: ByteArray = out
+                    if (data.isNotEmpty()) {
 
                         // 30 33 20 30 30 20 30 30 20 30 30 20 30 30 20 30 30 20 44 38 20 38 32 20 0D 0A
                         // 48 51 32 48 48 32 48 48 32 48 48 32 48 48 32 48 48 32 68 56 32 56 50 32 13 10
@@ -338,8 +344,8 @@ class BluetoothBleConnection(
                     ?: return
             mCharacteristic = characteristic
 //            Log.w(TAG, " *************** BluetoothGatt descriptor ${characteristic.uuid}")
-            descriptor.value = BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
-            gatt.writeDescriptor(descriptor)
+//            descriptor.value = BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
+            gatt.writeDescriptor(descriptor, BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE)
 //            }
         } ?: run {
             Log.w(TAG, "BluetoothGatt not initialized")
@@ -363,8 +369,8 @@ class BluetoothBleConnection(
                         return
                     }
 
-                    cccDescriptor.value = BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE
-                    gatt.writeDescriptor(cccDescriptor)
+//                    cccDescriptor.value = BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE
+                    gatt.writeDescriptor(cccDescriptor, BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE)
                 } ?: Log.e(
                 "ConnectionManager",
                 "${characteristic.uuid} doesn't contain the CCC descriptor!"

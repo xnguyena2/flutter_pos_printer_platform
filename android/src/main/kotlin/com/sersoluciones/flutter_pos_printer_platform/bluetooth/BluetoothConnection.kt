@@ -17,7 +17,9 @@ package com.sersoluciones.flutter_pos_printer_platform.bluetooth
 
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
+import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothSocket
+import android.content.Context
 import android.os.Bundle
 import android.os.Handler
 import android.util.Log
@@ -33,11 +35,12 @@ import java.io.OutputStream
  * incoming connections, a thread for connecting with a device, and a
  * thread for performing data transmissions when connected.
  */
-class BluetoothConnection constructor(handler: Handler) : IBluetoothConnection {
+class BluetoothConnection constructor(
+    mContext: Context, handler: Handler) : IBluetoothConnection {
 
 
     // Member fields
-    private val mAdapter: BluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
+    private val mAdapter: BluetoothAdapter
     private val mHandler: Handler
     private var mConnectThread: ConnectThread? = null
     private var mConnectedThread: ConnectedThread? = null
@@ -47,6 +50,8 @@ class BluetoothConnection constructor(handler: Handler) : IBluetoothConnection {
      * Constructor. Prepares a new BluetoothChat session.
      */
     init {
+        val bluetoothManager = mContext.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
+        mAdapter = bluetoothManager.adapter;
         mState = BluetoothConstants.STATE_NONE
         mHandler = handler
     }
