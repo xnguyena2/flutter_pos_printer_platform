@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.hardware.usb.*
+import android.os.Build
 import android.util.Base64
 import android.util.Log
 import android.widget.Toast
@@ -28,14 +29,18 @@ class USBPrinterAdapter private constructor() {
     fun init(reactContext: Context?) {
         mContext = reactContext
         mUSBManager = mContext!!.getSystemService(Context.USB_SERVICE) as UsbManager
-        mPermissionIndent = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+        mPermissionIndent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             PendingIntent.getBroadcast(mContext, 0, Intent(ACTION_USB_PERMISSION), PendingIntent.FLAG_IMMUTABLE)
         } else {
-            PendingIntent.getBroadcast(mContext, 0, Intent(ACTION_USB_PERMISSION), 0)
+            PendingIntent.getBroadcast(mContext, 0, Intent(ACTION_USB_PERMISSION), PendingIntent.FLAG_IMMUTABLE)
         }
         val filter = IntentFilter(ACTION_USB_PERMISSION)
         filter.addAction(UsbManager.ACTION_USB_DEVICE_DETACHED)
-        mContext!!.registerReceiver(mUsbDeviceReceiver, filter, ContextCompat.RECEIVER_EXPORTED)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            mContext!!.registerReceiver(mUsbDeviceReceiver, filter, Context.RECEIVER_EXPORTED)
+        }else {
+            ContextCompat.registerReceiver(mContext!!, mUsbDeviceReceiver, filter, ContextCompat.RECEIVER_EXPORTED)
+        }
         Log.v(LOG_TAG, "ESC/POS Printer initialized")
     }
 
@@ -45,7 +50,11 @@ class USBPrinterAdapter private constructor() {
             val action = intent.action
             if ((ACTION_USB_PERMISSION == action)) {
                 synchronized(this) {
-                    val usbDevice: UsbDevice? = intent.getParcelableExtra(UsbManager.EXTRA_DEVICE)
+                    val usbDevice: UsbDevice? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        intent.getParcelableExtra(UsbManager.EXTRA_DEVICE, UsbDevice::class.java)
+                    } else {
+                        intent.getParcelableExtra(UsbManager.EXTRA_DEVICE)
+                    }
                     if (intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false)) {
                         Log.i(
                             LOG_TAG,
@@ -155,14 +164,14 @@ class USBPrinterAdapter private constructor() {
         val isConnected = openConnection()
         if (isConnected) {
             Log.v(LOG_TAG, "Connected to device")
-            Thread(Runnable {
+            Thread {
                 synchronized(printLock) {
                     val bytes: ByteArray = text.toByteArray(Charset.forName("UTF-8"))
                     val b: Int =
                         mUsbDeviceConnection!!.bulkTransfer(mEndPoint, bytes, bytes.size, 100000)
                     Log.i(LOG_TAG, "Return code: $b")
                 }
-            }).start()
+            }.start()
             return true
         } else {
             Log.v(LOG_TAG, "Failed to connect to device")
@@ -175,20 +184,18 @@ class USBPrinterAdapter private constructor() {
         val isConnected = openConnection()
         if (isConnected) {
             Log.v(LOG_TAG, "Connected to device")
-            Thread(object : Runnable {
-                override fun run() {
-                    synchronized(printLock) {
-                        val bytes: ByteArray = Base64.decode(data, Base64.DEFAULT)
-                        val b: Int = mUsbDeviceConnection!!.bulkTransfer(
-                            mEndPoint,
-                            bytes,
-                            bytes.size,
-                            100000
-                        )
-                        Log.i(LOG_TAG, "Return code: " + b)
-                    }
+            Thread {
+                synchronized(printLock) {
+                    val bytes: ByteArray = Base64.decode(data, Base64.DEFAULT)
+                    val b: Int = mUsbDeviceConnection!!.bulkTransfer(
+                        mEndPoint,
+                        bytes,
+                        bytes.size,
+                        100000
+                    )
+                    Log.i(LOG_TAG, "Return code: " + b)
                 }
-            }).start()
+            }.start()
             return true
         } else {
             Log.v(LOG_TAG, "Failed to connected to device")

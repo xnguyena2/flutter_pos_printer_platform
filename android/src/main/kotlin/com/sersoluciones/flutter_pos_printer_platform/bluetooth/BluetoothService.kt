@@ -3,9 +3,11 @@ package com.sersoluciones.flutter_pos_printer_platform.bluetooth
 import android.app.Activity
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
+import android.bluetooth.BluetoothManager
 import android.bluetooth.le.ScanCallback
 import android.bluetooth.le.ScanResult
 import android.content.Context
+import android.content.Intent
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
@@ -14,7 +16,7 @@ import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.MethodChannel.Result
 
 
-class BluetoothService(private var bluetoothHandler: Handler?) {
+class BluetoothService(mContext: Context, private var bluetoothHandler: Handler?) {
     private var scanning = false
     private val handler = Handler(Looper.getMainLooper())
     private var currentActivity: Activity? = null
@@ -24,7 +26,8 @@ class BluetoothService(private var bluetoothHandler: Handler?) {
     private var result: Result? = null
 
     val mBluetoothAdapter: BluetoothAdapter by lazy {
-        BluetoothAdapter.getDefaultAdapter()
+        val bluetoothManager = mContext.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
+        bluetoothManager.adapter
     }
 
     private val bleScanner by lazy {
@@ -161,7 +164,7 @@ class BluetoothService(private var bluetoothHandler: Handler?) {
         if (bluetoothConnection == null)
             bluetoothConnection =
                 if (isBle) BluetoothBleConnection(mContext = context, bluetoothHandler!!, autoConnect = autoConnect)
-                else BluetoothConnection(bluetoothHandler!!)
+                else BluetoothConnection(context, bluetoothHandler!!)
         this.result = result
         reconnectBluetooth = bluetoothConnection is BluetoothConnection && autoConnect
         mConnectedDeviceAddress = address
@@ -216,7 +219,8 @@ class BluetoothService(private var bluetoothHandler: Handler?) {
     private fun setUpBluetooth() {
 
         if (!mBluetoothAdapter.isEnabled) {
-            mBluetoothAdapter.enable()
+            val enableBtIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
+            currentActivity?.startActivityForResult(enableBtIntent, 0)
             while (true) {
                 if (mBluetoothAdapter.isEnabled) break
             }
@@ -235,9 +239,9 @@ class BluetoothService(private var bluetoothHandler: Handler?) {
         var bluetoothConnection: IBluetoothConnection? = null
 
 
-        fun getInstance(bluetoothHandler: Handler): BluetoothService {
+        fun getInstance(mContext: Context, bluetoothHandler: Handler): BluetoothService {
             if (mInstance == null) {
-                mInstance = BluetoothService(bluetoothHandler)
+                mInstance = BluetoothService(mContext, bluetoothHandler)
             }
             return mInstance!!
         }
