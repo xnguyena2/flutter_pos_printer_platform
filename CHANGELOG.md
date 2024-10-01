@@ -123,3 +123,7 @@
 ## 1.2.9
 
 - fix android grandle
+
+## 1.2.10
+
+- fix android api 33
