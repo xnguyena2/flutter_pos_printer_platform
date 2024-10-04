@@ -85,7 +85,7 @@ class FlutterPosPrinterPlatformPlugin : FlutterPlugin, MethodCallHandler, Plugin
             super.handleMessage(msg)
             when (msg.what) {
                 BluetoothConstants.MESSAGE_STATE_CHANGE -> {
-                    when (bluetoothStatus) {
+                    when (msg.arg1) {
                         BluetoothConstants.STATE_CONNECTED -> {
                             Log.w(TAG, " -------------------------- connection BT STATE_CONNECTED ")
                             if (msg.obj != null)

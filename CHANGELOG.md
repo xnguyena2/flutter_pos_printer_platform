@@ -127,3 +127,7 @@
 ## 1.2.10
 
 - fix android api 33
+
+## 1.2.11
+
+- fix check state blue

@@ -39,7 +39,6 @@ class BluetoothBleConnection(
             if (state != BluetoothConstants.STATE_FAILED && state != BluetoothConstants.STATE_CONNECTED)
             // Give the new state to the Handler so the UI Activity can update
                 mHandler.obtainMessage(BluetoothConstants.MESSAGE_STATE_CHANGE, state, -1).sendToTarget()
-            if (state == BluetoothConstants.STATE_FAILED) mState = BluetoothConstants.STATE_NONE
             mState = state
         }
 
