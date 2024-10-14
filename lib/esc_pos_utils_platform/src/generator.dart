@@ -182,7 +182,7 @@ class Generator {
         height: heightPx,
         interpolation: Interpolation.linear);
     //fill(biggerImage, color: ColorRgb8(0, 0, 0));
-    biggerImage = fill(biggerImage, color: ColorRgb8(0, 0, 0));
+    biggerImage = fill(biggerImage, color: ColorRgb8(255, 255, 255));
     // Insert source image into bigger one
     biggerImage = compositeImage(biggerImage, image, dstX: 0, dstY: 0);
 

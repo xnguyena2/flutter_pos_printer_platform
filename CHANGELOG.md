@@ -131,3 +131,7 @@
 ## 1.2.11
 
 - fix check state blue
+
+## 1.2.12
+
+- change fill color to white insteal black
