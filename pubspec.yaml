@@ -4,7 +4,7 @@ version: 1.2.12
 homepage: https://github.com/diantahoc/flutter_pos_printer_platform
 
 environment:
-  sdk: ^3.5.3
+  sdk: ^3.8.0
   flutter: ">=3.3.0"
 
 # or using thermal_printer package
@@ -13,6 +13,8 @@ dependencies:
     sdk: flutter
   flutter_web_plugins:
     sdk: flutter
+
+  plugin_platform_interface: ^2.0.2
 
   # flutter_star_prnt: ^2.3.6
   enum_to_string: ^2.0.1
@@ -33,7 +35,7 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^4.0.0
+  flutter_lints: ^5.0.0
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
