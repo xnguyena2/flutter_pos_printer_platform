@@ -29,8 +29,8 @@ class BluetoothPrinterUniversalConnector
                   for (var element in element.characteristics) {
                     if (element.properties.contains(
                         CharacteristicProperty.writeWithoutResponse)) {
-                      // print('servicesUUID: $printingServicesUUID');
-                      // print('characteristicUUID: ${element.uuid}');
+                      print('servicesUUID: $printingServicesUUID');
+                      print('characteristicUUID: ${element.uuid}');
                       _characteristicUUID = element.uuid;
                       bleHavePrintingServices = true;
 
@@ -156,9 +156,8 @@ class BluetoothPrinterUniversalConnector
             name: bleDevice.name ?? bleDevice.deviceId,
             address: bleDevice.deviceId,
           );
-          _addDevice(device);
           return device;
-        });
+        }).where((device) => _addDevice(device));
       } catch (e) {
         print('Scan error: $e');
         yield* Stream.empty(); // fallback nếu lỗi
