@@ -1,11 +1,12 @@
 import 'dart:io';
 
 import 'package:flutter_pos_printer_platform_image_3_sdt/flutter_pos_printer_platform_image_3_sdt.dart';
+import 'package:flutter_pos_printer_platform_image_3_sdt/src/connectors/bluetooth_universal.dart';
 
 enum PrinterType { bluetooth, usb, network }
 
 class PrinterManager {
-  final bluetoothPrinterConnector = BluetoothPrinterConnector.instance;
+  final bluetoothPrinterConnector = BluetoothPrinterUniversalConnector.instance;
   final tcpPrinterConnector = TcpPrinterConnector.instance;
   final usbPrinterConnector = UsbPrinterConnector.instance;
 

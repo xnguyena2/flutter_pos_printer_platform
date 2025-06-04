@@ -1,3 +1,5 @@
+import 'package:flutter_pos_printer_platform_image_3_sdt/src/connectors/bluetooth_universal.dart';
+
 import 'flutter_pos_printer_platform_image_3_sdt.dart';
 
 class PrinterDiscovered<T> {
@@ -15,7 +17,8 @@ Future<List<PrinterDiscovered>> discoverPrinters(
     {List<DiscoverResult Function()> modes = const [
       // discoverStarPrinter,
       UsbPrinterConnector.discoverPrinters,
-      BluetoothPrinterConnector.discoverPrinters,
+      BluetoothPrinterUniversalConnector.discoverPrinters,
+      // BluetoothPrinterConnector.discoverPrinters,
       TcpPrinterConnector.discoverPrinters
     ]}) async {
   List<PrinterDiscovered> result = [];
