@@ -19,38 +19,36 @@ class BluetoothPrinterUniversalConnector
     // Get connection/disconnection updates
     UniversalBle.onConnectionChange =
         (String deviceId, bool isConnected, String? error) {
-          debugPrint('OnConnectionChange $deviceId, $isConnected, $error');
+      debugPrint('OnConnectionChange $deviceId, $isConnected, $error');
 
-          // log('Received event status: $data');
+      // log('Received event status: $data');
 
-          if (isConnected) {
-            UniversalBle.discoverServices(deviceId).then((value) {
-              for (var element in value) {
-                if (element.uuid.toUpperCase() == printingServicesUUID) {
-                  for (var element in element.characteristics) {
-                    if (element.properties.contains(
-                      CharacteristicProperty.writeWithoutResponse,
-                    )) {
-                      print('servicesUUID: $printingServicesUUID');
-                      print('characteristicUUID: ${element.uuid}');
-                      _characteristicUUID = element.uuid.toUpperCase();
-                      bleHavePrintingServices = true;
+      if (isConnected) {
+        UniversalBle.discoverServices(deviceId).then((value) {
+          for (var element in value) {
+            if (element.uuid.toUpperCase() == printingServicesUUID) {
+              for (var element in element.characteristics) {
+                if (element.properties.contains(
+                  CharacteristicProperty.writeWithoutResponse,
+                )) {
+                  print('servicesUUID: $printingServicesUUID');
+                  print('characteristicUUID: ${element.uuid}');
+                  _characteristicUUID = element.uuid.toUpperCase();
+                  bleHavePrintingServices = true;
 
-                      _status = isConnected
-                          ? BTStatus.connected
-                          : BTStatus.none;
-                      _statusStreamController.add(_status);
-                    }
-                  }
+                  _status = isConnected ? BTStatus.connected : BTStatus.none;
+                  _statusStreamController.add(_status);
                 }
               }
-            });
-            return;
+            }
           }
-          bleHavePrintingServices = false;
-          _status = isConnected ? BTStatus.connected : BTStatus.none;
-          _statusStreamController.add(_status);
-        };
+        });
+        return;
+      }
+      bleHavePrintingServices = false;
+      _status = isConnected ? BTStatus.connected : BTStatus.none;
+      _statusStreamController.add(_status);
+    };
     return;
   }
   static BluetoothPrinterUniversalConnector _instance =
@@ -114,9 +112,8 @@ class BluetoothPrinterUniversalConnector
         await UniversalBle.getBluetoothAvailabilityState();
     // Start scan only if Bluetooth is powered on
     if (state == AvailabilityState.poweredOn) {
-      final withServices = Platform.isIOS || Platform.isMacOS
-          ? [printingServicesUUID]
-          : null;
+      final withServices =
+          Platform.isIOS || Platform.isMacOS ? [printingServicesUUID] : null;
       final listBleDevice = await UniversalBle.getSystemDevices(
         withServices: withServices,
       );
@@ -162,13 +159,12 @@ class BluetoothPrinterUniversalConnector
         yield* UniversalBle.scanStream
             .takeUntil(Rx.merge(killStreams))
             .map((bleDevice) {
-              final device = PrinterDevice.web(
-                name: bleDevice.name ?? bleDevice.deviceId,
-                address: bleDevice.deviceId,
-              );
-              return device;
-            })
-            .where((device) => _addDevice(device));
+          final device = PrinterDevice.web(
+            name: bleDevice.name ?? bleDevice.deviceId,
+            address: bleDevice.deviceId,
+          );
+          return device;
+        }).where((device) => _addDevice(device));
       } catch (e) {
         print('Scan error: $e');
         yield* Stream.empty(); // fallback nếu lỗi
