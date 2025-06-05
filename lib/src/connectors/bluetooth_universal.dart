@@ -5,51 +5,52 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_pos_printer_platform_image_3_sdt/discovery.dart';
 import 'package:flutter_pos_printer_platform_image_3_sdt/flutter_pos_printer_platform_image_3_sdt.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:rxdart/rxdart.dart';
 import 'package:universal_ble/universal_ble.dart';
 
 class BluetoothPrinterUniversalConnector
     implements PrinterConnector<BluetoothPrinterInput> {
   // ignore: unused_element
-  BluetoothPrinterUniversalConnector._(
-      {this.address = "", this.isBle = false}) {
+  BluetoothPrinterUniversalConnector._({
+    this.address = "",
+    this.isBle = false,
+  }) {
     // Get connection/disconnection updates
     UniversalBle.onConnectionChange =
         (String deviceId, bool isConnected, String? error) {
-      debugPrint('OnConnectionChange $deviceId, $isConnected, $error');
+          debugPrint('OnConnectionChange $deviceId, $isConnected, $error');
 
-      if (deviceId == bleDevice?.deviceId) {
-        // log('Received event status: $data');
+          // log('Received event status: $data');
 
-        if (isConnected) {
-          UniversalBle.discoverServices(deviceId).then(
-            (value) {
+          if (isConnected) {
+            UniversalBle.discoverServices(deviceId).then((value) {
               for (var element in value) {
                 if (element.uuid.toUpperCase() == printingServicesUUID) {
                   for (var element in element.characteristics) {
                     if (element.properties.contains(
-                        CharacteristicProperty.writeWithoutResponse)) {
+                      CharacteristicProperty.writeWithoutResponse,
+                    )) {
                       print('servicesUUID: $printingServicesUUID');
                       print('characteristicUUID: ${element.uuid}');
-                      _characteristicUUID = element.uuid;
+                      _characteristicUUID = element.uuid.toUpperCase();
                       bleHavePrintingServices = true;
 
-                      _status =
-                          isConnected ? BTStatus.connected : BTStatus.none;
+                      _status = isConnected
+                          ? BTStatus.connected
+                          : BTStatus.none;
                       _statusStreamController.add(_status);
                     }
                   }
                 }
               }
-            },
-          );
-          return;
-        }
-        bleHavePrintingServices = false;
-        _status = isConnected ? BTStatus.connected : BTStatus.none;
-        _statusStreamController.add(_status);
-      }
-    };
+            });
+            return;
+          }
+          bleHavePrintingServices = false;
+          _status = isConnected ? BTStatus.connected : BTStatus.none;
+          _statusStreamController.add(_status);
+        };
     return;
   }
   static BluetoothPrinterUniversalConnector _instance =
@@ -65,16 +66,20 @@ class BluetoothPrinterUniversalConnector
   BehaviorSubject<bool> _isScanning = BehaviorSubject.seeded(false);
   Stream<bool> get isScanning => _isScanning.stream;
 
-  BehaviorSubject<List<PrinterDevice>> _scanResults =
-      BehaviorSubject.seeded([]);
+  BehaviorSubject<List<PrinterDevice>> _scanResults = BehaviorSubject.seeded(
+    [],
+  );
   Stream<List<PrinterDevice>> get scanResults => _scanResults.stream;
 
   Stream<BTStatus> get _statusStream => _statusStreamController.stream;
   final StreamController<BTStatus> _statusStreamController =
       StreamController.broadcast();
 
-  BluetoothPrinterUniversalConnector(
-      {required this.address, required this.isBle, this.name}) {
+  BluetoothPrinterUniversalConnector({
+    required this.address,
+    required this.isBle,
+    this.name,
+  }) {
     flutterPrinterChannel.setMethodCallHandler((MethodCall call) {
       _methodStreamController.add(call);
       return Future(() => null);
@@ -85,9 +90,9 @@ class BluetoothPrinterUniversalConnector
       'E7810A71-73AE-499D-8C15-FAA9AEF0C3F2';
   static final String characteristicUUID =
       'BEF8D6C9-9C21-4C9E-B632-BD58C1009F9F';
-  BleDevice? bleDevice;
   bool bleHavePrintingServices = false;
-  String _characteristicUUID = '';
+  String _characteristicUUID = characteristicUUID;
+  String currentDeviceID = '';
 
   String address;
   String? name;
@@ -101,24 +106,28 @@ class BluetoothPrinterUniversalConnector
   setName(String name) => this.name = name;
   setIsBle(bool isBle) => this.isBle = isBle;
 
-  static DiscoverResult<BluetoothPrinterDevice> discoverPrinters(
-      {bool isBle = false}) async {
+  static DiscoverResult<BluetoothPrinterDevice> discoverPrinters({
+    bool isBle = false,
+  }) async {
+    await requestBluetoothPermissions();
     AvailabilityState state =
         await UniversalBle.getBluetoothAvailabilityState();
-// Start scan only if Bluetooth is powered on
+    // Start scan only if Bluetooth is powered on
     if (state == AvailabilityState.poweredOn) {
-      final withServices =
-          Platform.isIOS || Platform.isMacOS ? [printingServicesUUID] : null;
-      final listBleDevice =
-          await UniversalBle.getSystemDevices(withServices: withServices);
+      final withServices = Platform.isIOS || Platform.isMacOS
+          ? [printingServicesUUID]
+          : null;
+      final listBleDevice = await UniversalBle.getSystemDevices(
+        withServices: withServices,
+      );
 
       return listBleDevice
-          .map((BleDevice r) => PrinterDiscovered<BluetoothPrinterDevice>(
-                name: r.name ?? r.deviceId,
-                detail: BluetoothPrinterDevice(
-                  address: r.deviceId,
-                ),
-              ))
+          .map(
+            (BleDevice r) => PrinterDiscovered<BluetoothPrinterDevice>(
+              name: r.name ?? r.deviceId,
+              detail: BluetoothPrinterDevice(address: r.deviceId),
+            ),
+          )
           .toList();
     }
     return [];
@@ -131,6 +140,8 @@ class BluetoothPrinterUniversalConnector
     bool isBle = false,
     Duration timeout = const Duration(seconds: 7),
   }) async* {
+    await requestBluetoothPermissions();
+
     final killStreams = <Stream<dynamic>>[
       _stopScanPill,
       Rx.timer(null, timeout),
@@ -151,13 +162,13 @@ class BluetoothPrinterUniversalConnector
         yield* UniversalBle.scanStream
             .takeUntil(Rx.merge(killStreams))
             .map((bleDevice) {
-          this.bleDevice = bleDevice;
-          final device = PrinterDevice.web(
-            name: bleDevice.name ?? bleDevice.deviceId,
-            address: bleDevice.deviceId,
-          );
-          return device;
-        }).where((device) => _addDevice(device));
+              final device = PrinterDevice.web(
+                name: bleDevice.name ?? bleDevice.deviceId,
+                address: bleDevice.deviceId,
+              );
+              return device;
+            })
+            .where((device) => _addDevice(device));
       } catch (e) {
         print('Scan error: $e');
         yield* Stream.empty(); // fallback nếu lỗi
@@ -165,6 +176,20 @@ class BluetoothPrinterUniversalConnector
     } else {
       print("Bluetooth not powered on");
       yield* Stream.empty(); // không bật Bluetooth thì không yield
+    }
+  }
+
+  static Future<void> requestBluetoothPermissions() async {
+    if (await Permission.bluetoothScan.isDenied) {
+      await Permission.bluetoothScan.request();
+    }
+
+    if (await Permission.bluetoothConnect.isDenied) {
+      await Permission.bluetoothConnect.request();
+    }
+
+    if (await Permission.locationWhenInUse.isDenied) {
+      await Permission.locationWhenInUse.request();
     }
   }
 
@@ -180,16 +205,14 @@ class BluetoothPrinterUniversalConnector
   }
 
   /// Start a scan for Bluetooth Low Energy devices
-  Future startScan({
-    Duration? timeout,
-  }) async {
+  Future startScan({Duration? timeout}) async {
     await discovery(timeout: timeout ?? const Duration(seconds: 7)).drain();
     return _scanResults.value;
   }
 
   /// Stops a scan for Bluetooth Low Energy devices
   Future stopScan() async {
-// Stop scanning
+    // Stop scanning
     UniversalBle.stopScan();
     _stopScanPill.add(null);
     _isScanning.add(false);
@@ -198,9 +221,11 @@ class BluetoothPrinterUniversalConnector
   Future<bool> _connect({BluetoothPrinterInput? model}) async {
     String? deviceId = model?.address;
     if (deviceId != null) {
-      UniversalBle.connect(deviceId);
+      currentDeviceID = deviceId;
+      await UniversalBle.connect(deviceId);
+      return true;
     }
-    return true;
+    return false;
   }
 
   /// Gets the current state of the Bluetooth module
@@ -219,19 +244,10 @@ class BluetoothPrinterUniversalConnector
     }*/
   }
 
-  PrinterDevice? getWebBleDevice() {
-    if (bleDevice == null) {
-      return null;
-    }
-    return PrinterDevice.web(
-        name: bleDevice!.name ?? bleDevice!.deviceId,
-        address: bleDevice!.deviceId);
-  }
-
   @override
   Future<bool> disconnect({int? delayMs}) async {
-    final deviceId = bleDevice?.deviceId;
-    if (deviceId != null) {
+    final deviceId = currentDeviceID;
+    if (deviceId.isNotEmpty) {
       UniversalBle.disconnect(deviceId);
       return true;
     }
@@ -244,14 +260,21 @@ class BluetoothPrinterUniversalConnector
   Future<bool> send(List<int> bytes) async {
     try {
       //send data to bluetooth device
-      final deviceId = bleDevice?.deviceId;
-      if (deviceId != null && bleHavePrintingServices) {
+      final deviceId = currentDeviceID;
+      print('send data length: ${bytes.length} to bluetooth device: $deviceId');
+      if (deviceId.isNotEmpty) {
         final data = Uint8List.fromList(bytes);
-        UniversalBle.writeValue(deviceId, printingServicesUUID,
-            _characteristicUUID, data, BleOutputProperty.withoutResponse);
+        await UniversalBle.writeValue(
+          deviceId,
+          printingServicesUUID,
+          _characteristicUUID,
+          data,
+          BleOutputProperty.withoutResponse,
+        );
       }
       return true;
     } catch (e) {
+      print(e);
       return false;
     }
   }

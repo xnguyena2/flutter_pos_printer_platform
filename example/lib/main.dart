@@ -63,6 +63,7 @@ class _MyAppState extends State<MyApp> {
       if (status == BTStatus.connected && pendingTask != null) {
         if (Platform.isAndroid) {
           Future.delayed(const Duration(milliseconds: 1000), () {
+            print('send late to android');
             PrinterManager.instance
                 .send(type: PrinterType.bluetooth, bytes: pendingTask!);
             pendingTask = null;
@@ -169,6 +170,11 @@ class _MyAppState extends State<MyApp> {
         styles: const PosStyles(align: PosAlign.center));
     bytes += generator.text('Product 1');
     bytes += generator.text('Product 2');
+    bytes += generator.text('Product 2');
+    bytes += generator.text('Product 2');
+    bytes += generator.text('Product 2');
+    bytes += generator.text('Product 2');
+    bytes += generator.text('Product 2');
 
     _printEscPos(bytes, generator);
   }
@@ -214,6 +220,7 @@ class _MyAppState extends State<MyApp> {
     if (bluetoothPrinter.typePrinter == PrinterType.bluetooth &&
         Platform.isAndroid) {
       if (_currentStatus == BTStatus.connected) {
+        print('send now to android');
         printerManager.send(type: bluetoothPrinter.typePrinter, bytes: bytes);
         pendingTask = null;
       }
