@@ -21,8 +21,6 @@ class BluetoothPrinterUniversalConnector
         (String deviceId, bool isConnected, String? error) {
       debugPrint('OnConnectionChange $deviceId, $isConnected, $error');
 
-      // log('Received event status: $data');
-
       if (isConnected) {
         UniversalBle.discoverServices(deviceId).then((value) {
           for (var element in value) {
@@ -56,9 +54,6 @@ class BluetoothPrinterUniversalConnector
 
   static BluetoothPrinterUniversalConnector get instance => _instance;
 
-  Stream<MethodCall> get _methodStream => _methodStreamController.stream;
-  final StreamController<MethodCall> _methodStreamController =
-      StreamController.broadcast();
   PublishSubject _stopScanPill = new PublishSubject();
 
   BehaviorSubject<bool> _isScanning = BehaviorSubject.seeded(false);
@@ -77,12 +72,7 @@ class BluetoothPrinterUniversalConnector
     required this.address,
     required this.isBle,
     this.name,
-  }) {
-    flutterPrinterChannel.setMethodCallHandler((MethodCall call) {
-      _methodStreamController.add(call);
-      return Future(() => null);
-    });
-  }
+  });
 
   static final String printingServicesUUID =
       'E7810A71-73AE-499D-8C15-FAA9AEF0C3F2';
@@ -226,18 +216,7 @@ class BluetoothPrinterUniversalConnector
 
   /// Gets the current state of the Bluetooth module
   Stream<BTStatus> get currentStatus async* {
-    // if (Platform.isAndroid) {
     yield* _statusStream.cast<BTStatus>();
-
-    /*} else if (Platform.isIOS) {
-      await iosChannel.invokeMethod('state').then((s) => s);
-      await for (dynamic data in iosStateChannel.receiveBroadcastStream().map((s) => s)) {
-        if (data is int) {
-          yield BTStatus.values[data];
-        }
-      }
-      // yield* iosStateChannel.receiveBroadcastStream().map((s) => s);
-    }*/
   }
 
   @override
