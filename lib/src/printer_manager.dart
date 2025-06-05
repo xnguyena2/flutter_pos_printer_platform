@@ -7,6 +7,7 @@ enum PrinterType { bluetooth, usb, network }
 
 class PrinterManager {
   final bluetoothPrinterConnector = BluetoothPrinterUniversalConnector.instance;
+  final bluetoothPrinterOldConnector = BluetoothPrinterConnector.instance;
   final tcpPrinterConnector = TcpPrinterConnector.instance;
   final usbPrinterConnector = UsbPrinterConnector.instance;
 
@@ -20,6 +21,9 @@ class PrinterManager {
       {required PrinterType type, bool isBle = false, TcpPrinterInput? model}) {
     if (type == PrinterType.bluetooth &&
         (Platform.isIOS || Platform.isAndroid)) {
+      if (Platform.isAndroid) {
+        return bluetoothPrinterOldConnector.discovery(isBle: isBle);
+      }
       return bluetoothPrinterConnector.discovery(isBle: isBle);
     } else if (type == PrinterType.usb &&
         (Platform.isAndroid || Platform.isWindows)) {
@@ -34,24 +38,25 @@ class PrinterManager {
     if (type == PrinterType.bluetooth &&
         (Platform.isIOS || Platform.isAndroid)) {
       try {
-        var conn = await bluetoothPrinterConnector
+        if (Platform.isAndroid) {
+          return bluetoothPrinterOldConnector
+              .connect(model as BluetoothPrinterInput);
+        }
+        return await bluetoothPrinterConnector
             .connect(model as BluetoothPrinterInput);
-        return conn;
       } catch (e) {
         throw Exception('model must be type of BluetoothPrinterInput');
       }
     } else if (type == PrinterType.usb &&
         (Platform.isAndroid || Platform.isWindows)) {
       try {
-        var conn = await usbPrinterConnector.connect(model as UsbPrinterInput);
-        return conn;
+        return await usbPrinterConnector.connect(model as UsbPrinterInput);
       } catch (e) {
         throw Exception('model must be type of UsbPrinterInput');
       }
     } else {
       try {
-        var conn = await tcpPrinterConnector.connect(model as TcpPrinterInput);
-        return conn;
+        return await tcpPrinterConnector.connect(model as TcpPrinterInput);
       } catch (e) {
         throw Exception('model must be type of TcpPrinterInput');
       }
@@ -61,6 +66,9 @@ class PrinterManager {
   Future<bool> disconnect({required PrinterType type, int? delayMs}) async {
     if (type == PrinterType.bluetooth &&
         (Platform.isIOS || Platform.isAndroid)) {
+      if (Platform.isAndroid) {
+        return bluetoothPrinterOldConnector.disconnect();
+      }
       return await bluetoothPrinterConnector.disconnect();
     } else if (type == PrinterType.usb &&
         (Platform.isAndroid || Platform.isWindows)) {
@@ -74,6 +82,9 @@ class PrinterManager {
       {required PrinterType type, required List<int> bytes}) async {
     if (type == PrinterType.bluetooth &&
         (Platform.isIOS || Platform.isAndroid)) {
+      if (Platform.isAndroid) {
+        return await bluetoothPrinterOldConnector.send(bytes);
+      }
       return await bluetoothPrinterConnector.send(bytes);
     } else if (type == PrinterType.usb &&
         (Platform.isAndroid || Platform.isWindows)) {
@@ -83,11 +94,16 @@ class PrinterManager {
     }
   }
 
-  Stream<BTStatus> get stateBluetooth =>
-      bluetoothPrinterConnector.currentStatus.cast<BTStatus>();
+  Stream<BTStatus> get stateBluetooth => Platform.isAndroid
+      ? bluetoothPrinterOldConnector.currentStatus.cast<BTStatus>()
+      : bluetoothPrinterConnector.currentStatus.cast<BTStatus>();
+
   Stream<USBStatus> get stateUSB =>
       usbPrinterConnector.currentStatus.cast<USBStatus>();
 
-  BTStatus get currentStatusBT => bluetoothPrinterConnector.status;
+  BTStatus get currentStatusBT => Platform.isAndroid
+      ? bluetoothPrinterOldConnector.status
+      : bluetoothPrinterConnector.status;
+
   USBStatus get currentStatusUSB => usbPrinterConnector.status;
 }
