@@ -28,7 +28,7 @@ class BluetoothPrinterDevice {
 class BluetoothPrinterConnector
     implements PrinterConnector<BluetoothPrinterInput> {
   // ignore: unused_element
-  BluetoothPrinterConnector._({this.address = "", this.isBle = false}) {
+  BluetoothPrinterConnector._() {
     if (Platform.isAndroid)
       flutterPrinterChannel.setMethodCallHandler((MethodCall call) {
         _methodStreamController.add(call);
@@ -81,25 +81,20 @@ class BluetoothPrinterConnector
   final StreamController<BTStatus> _statusStreamController =
       StreamController.broadcast();
 
-  BluetoothPrinterConnector(
-      {required this.address, required this.isBle, this.name}) {
+  BluetoothPrinterConnector({this.name}) {
     flutterPrinterChannel.setMethodCallHandler((MethodCall call) {
       _methodStreamController.add(call);
       return Future(() => null);
     });
   }
 
-  String address;
   String? name;
-  bool isBle;
   BTStatus _status = BTStatus.none;
   BTStatus get status => _status;
 
   StreamController<String> devices = new StreamController.broadcast();
 
-  setAddress(String address) => this.address = address;
   setName(String name) => this.name = name;
-  setIsBle(bool isBle) => this.isBle = isBle;
 
   static DiscoverResult<BluetoothPrinterDevice> discoverPrinters(
       {bool isBle = false}) async {
@@ -204,8 +199,8 @@ class BluetoothPrinterConnector
   Future<bool> _connect({BluetoothPrinterInput? model}) async {
     if (Platform.isAndroid) {
       Map<String, dynamic> params = {
-        "address": model?.address ?? address,
-        "isBle": model?.isBle ?? isBle,
+        "address": model?.address,
+        "isBle": model?.isBle,
         "autoConnect": model?.autoConnect ?? false
       };
       return await flutterPrinterChannel.invokeMethod(

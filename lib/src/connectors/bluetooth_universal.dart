@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_pos_printer_platform_image_3_sdt/discovery.dart';
 import 'package:flutter_pos_printer_platform_image_3_sdt/flutter_pos_printer_platform_image_3_sdt.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -12,10 +11,7 @@ import 'package:universal_ble/universal_ble.dart';
 class BluetoothPrinterUniversalConnector
     implements PrinterConnector<BluetoothPrinterInput> {
   // ignore: unused_element
-  BluetoothPrinterUniversalConnector._({
-    this.address = "",
-    this.isBle = false,
-  }) {
+  BluetoothPrinterUniversalConnector._() {
     // Get connection/disconnection updates
     UniversalBle.onConnectionChange =
         (String deviceId, bool isConnected, String? error) {
@@ -68,11 +64,7 @@ class BluetoothPrinterUniversalConnector
   final StreamController<BTStatus> _statusStreamController =
       StreamController.broadcast();
 
-  BluetoothPrinterUniversalConnector({
-    required this.address,
-    required this.isBle,
-    this.name,
-  });
+  BluetoothPrinterUniversalConnector();
 
   static final String printingServicesUUID =
       'E7810A71-73AE-499D-8C15-FAA9AEF0C3F2';
@@ -82,17 +74,13 @@ class BluetoothPrinterUniversalConnector
   String _characteristicUUID = characteristicUUID;
   String currentDeviceID = '';
 
-  String address;
   String? name;
-  bool isBle;
   BTStatus _status = BTStatus.none;
   BTStatus get status => _status;
 
   StreamController<String> devices = new StreamController.broadcast();
 
-  setAddress(String address) => this.address = address;
   setName(String name) => this.name = name;
-  setIsBle(bool isBle) => this.isBle = isBle;
 
   static DiscoverResult<BluetoothPrinterDevice> discoverPrinters({
     bool isBle = false,
