@@ -135,3 +135,7 @@
 ## 1.2.12
 
 - change fill color to white insteal black
+
+## 1.2.13
+
+- change tousing universal in IOS
