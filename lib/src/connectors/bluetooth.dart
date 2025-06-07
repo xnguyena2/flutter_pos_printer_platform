@@ -35,11 +35,11 @@ class BluetoothPrinterConnector
         return Future(() => null);
       });
 
-    if (Platform.isIOS)
-      iosChannel.setMethodCallHandler((MethodCall call) {
-        _methodStreamController.add(call);
-        return Future(() => null);
-      });
+    // if (Platform.isIOS)
+    //   iosChannel.setMethodCallHandler((MethodCall call) {
+    //     _methodStreamController.add(call);
+    //     return Future(() => null);
+    //   });
 
     if (Platform.isAndroid)
       flutterPrinterEventChannelBT.receiveBroadcastStream().listen((data) {
@@ -50,16 +50,16 @@ class BluetoothPrinterConnector
         }
       });
 
-    if (Platform.isIOS) {
-      //  iosChannel.invokeMethod('state').then((s) => s);
-      iosStateChannel.receiveBroadcastStream().listen((data) {
-        if (data is int) {
-          // log('Received event status: $data');
-          _status = BTStatus.values[data];
-          _statusStreamController.add(_status);
-        }
-      });
-    }
+    // if (Platform.isIOS) {
+    //   //  iosChannel.invokeMethod('state').then((s) => s);
+    //   iosStateChannel.receiveBroadcastStream().listen((data) {
+    //     if (data is int) {
+    //       // log('Received event status: $data');
+    //       _status = BTStatus.values[data];
+    //       _statusStreamController.add(_status);
+    //     }
+    //   });
+    // }
   }
   static BluetoothPrinterConnector _instance = BluetoothPrinterConnector._();
 
@@ -149,29 +149,30 @@ class BluetoothPrinterConnector
         if (!_addDevice(device)) continue;
         yield device;
       }
-    } else if (Platform.isIOS) {
-      try {
-        await iosChannel.invokeMethod('startScan');
-      } catch (e) {
-        print('Error starting scan.');
-        _stopScanPill.add(null);
-        _isScanning.add(false);
-        throw e;
-      }
-
-      await for (dynamic data in _methodStream
-          .where((m) => m.method == "ScanResult")
-          .map((m) => m.arguments)
-          .takeUntil(Rx.merge(killStreams))
-          .doOnDone(stopScan)
-          .map((message) => message)) {
-        print('Scan result: $data');
-        final device = PrinterDevice(
-            name: data['name'] as String, address: data['address'] as String?);
-        if (!_addDevice(device)) continue;
-        yield device;
-      }
     }
+    //  else if (Platform.isIOS) {
+    //   try {
+    //     await iosChannel.invokeMethod('startScan');
+    //   } catch (e) {
+    //     print('Error starting scan.');
+    //     _stopScanPill.add(null);
+    //     _isScanning.add(false);
+    //     throw e;
+    //   }
+
+    //   await for (dynamic data in _methodStream
+    //       .where((m) => m.method == "ScanResult")
+    //       .map((m) => m.arguments)
+    //       .takeUntil(Rx.merge(killStreams))
+    //       .doOnDone(stopScan)
+    //       .map((message) => message)) {
+    //     print('Scan result: $data');
+    //     final device = PrinterDevice(
+    //         name: data['name'] as String, address: data['address'] as String?);
+    //     if (!_addDevice(device)) continue;
+    //     yield device;
+    //   }
+    // }
   }
 
   bool _addDevice(PrinterDevice device) {
@@ -195,7 +196,7 @@ class BluetoothPrinterConnector
 
   /// Stops a scan for Bluetooth Low Energy devices
   Future stopScan() async {
-    if (Platform.isIOS) await iosChannel.invokeMethod('stopScan');
+    // if (Platform.isIOS) await iosChannel.invokeMethod('stopScan');
     _stopScanPill.add(null);
     _isScanning.add(false);
   }
@@ -209,13 +210,14 @@ class BluetoothPrinterConnector
       };
       return await flutterPrinterChannel.invokeMethod(
           'onStartConnection', params);
-    } else if (Platform.isIOS) {
-      Map<String, dynamic> params = {
-        "name": model?.name ?? name,
-        "address": model?.address ?? address
-      };
-      return await iosChannel.invokeMethod('connect', params);
     }
+    //  else if (Platform.isIOS) {
+    //   Map<String, dynamic> params = {
+    //     "name": model?.name ?? name,
+    //     "address": model?.address ?? address
+    //   };
+    //   return await iosChannel.invokeMethod('connect', params);
+    // }
     return false;
   }
 
@@ -239,11 +241,9 @@ class BluetoothPrinterConnector
   Future<bool> disconnect({int? delayMs}) async {
     if (Platform.isAndroid)
       await flutterPrinterChannel.invokeMethod('disconnect');
-    else if (Platform.isIOS) await iosChannel.invokeMethod('disconnect');
+    // else if (Platform.isIOS) await iosChannel.invokeMethod('disconnect');
     return false;
   }
-
-  Future<dynamic> destroy() => iosChannel.invokeMethod('destroy');
 
   @override
   Future<bool> send(List<int> bytes) async {
@@ -253,13 +253,15 @@ class BluetoothPrinterConnector
         // if (!connected) return false;
         Map<String, dynamic> params = {"bytes": bytes};
         return await flutterPrinterChannel.invokeMethod('sendDataByte', params);
-      } else if (Platform.isIOS) {
-        Map<String, Object> args = Map();
-        args['bytes'] = bytes;
-        args['length'] = bytes.length;
-        iosChannel.invokeMethod('writeData', args);
-        return Future.value(true);
-      } else {
+      }
+      //  else if (Platform.isIOS) {
+      //   Map<String, Object> args = Map();
+      //   args['bytes'] = bytes;
+      //   args['length'] = bytes.length;
+      //   iosChannel.invokeMethod('writeData', args);
+      //   return Future.value(true);
+      // }
+      else {
         return false;
       }
     } catch (e) {

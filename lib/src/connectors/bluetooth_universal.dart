@@ -229,8 +229,6 @@ class BluetoothPrinterUniversalConnector
     return false;
   }
 
-  Future<dynamic> destroy() => iosChannel.invokeMethod('destroy');
-
   @override
   Future<bool> send(List<int> bytes) async {
     try {
