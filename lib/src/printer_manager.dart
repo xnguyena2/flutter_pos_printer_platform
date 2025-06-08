@@ -21,7 +21,7 @@ class PrinterManager {
       {required PrinterType type, bool isBle = false, TcpPrinterInput? model}) {
     if (type == PrinterType.bluetooth &&
         (Platform.isIOS || Platform.isAndroid)) {
-      if (Platform.isAndroid) {
+      if (isForceUseOldBlueTooth || Platform.isAndroid) {
         return bluetoothPrinterOldConnector.discovery(isBle: isBle);
       }
       return bluetoothPrinterConnector.discovery(isBle: isBle);
@@ -38,7 +38,7 @@ class PrinterManager {
     if (type == PrinterType.bluetooth &&
         (Platform.isIOS || Platform.isAndroid)) {
       try {
-        if (Platform.isAndroid) {
+        if (isForceUseOldBlueTooth || Platform.isAndroid) {
           return bluetoothPrinterOldConnector
               .connect(model as BluetoothPrinterInput);
         }
@@ -66,7 +66,7 @@ class PrinterManager {
   Future<bool> disconnect({required PrinterType type, int? delayMs}) async {
     if (type == PrinterType.bluetooth &&
         (Platform.isIOS || Platform.isAndroid)) {
-      if (Platform.isAndroid) {
+      if (isForceUseOldBlueTooth || Platform.isAndroid) {
         return bluetoothPrinterOldConnector.disconnect();
       }
       return await bluetoothPrinterConnector.disconnect();
@@ -82,7 +82,7 @@ class PrinterManager {
       {required PrinterType type, required List<int> bytes}) async {
     if (type == PrinterType.bluetooth &&
         (Platform.isIOS || Platform.isAndroid)) {
-      if (Platform.isAndroid) {
+      if (isForceUseOldBlueTooth || Platform.isAndroid) {
         return await bluetoothPrinterOldConnector.send(bytes);
       }
       return await bluetoothPrinterConnector.send(bytes);
@@ -94,16 +94,21 @@ class PrinterManager {
     }
   }
 
-  Stream<BTStatus> get stateBluetooth => Platform.isAndroid
-      ? bluetoothPrinterOldConnector.currentStatus.cast<BTStatus>()
-      : bluetoothPrinterConnector.currentStatus.cast<BTStatus>();
+  Stream<BTStatus> get stateBluetooth =>
+      isForceUseOldBlueTooth || Platform.isAndroid
+          ? bluetoothPrinterOldConnector.currentStatus.cast<BTStatus>()
+          : bluetoothPrinterConnector.currentStatus.cast<BTStatus>();
 
   Stream<USBStatus> get stateUSB =>
       usbPrinterConnector.currentStatus.cast<USBStatus>();
 
-  BTStatus get currentStatusBT => Platform.isAndroid
+  BTStatus get currentStatusBT => isForceUseOldBlueTooth || Platform.isAndroid
       ? bluetoothPrinterOldConnector.status
       : bluetoothPrinterConnector.status;
 
   USBStatus get currentStatusUSB => usbPrinterConnector.status;
+
+  bool isForceUseOldBlueTooth = true;
+
+  set setForceUseOldBlueTooth(bool value) => isForceUseOldBlueTooth = value;
 }

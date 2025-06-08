@@ -6,8 +6,9 @@ final flutterPrinterEventChannelBT = const EventChannel(
     'com.sersoluciones.flutter_pos_printer_platform/bt_state');
 final flutterPrinterEventChannelUSB = const EventChannel(
     'com.sersoluciones.flutter_pos_printer_platform/usb_state');
-// final iosChannel = const MethodChannel('flutter_pos_printer_platform/methods');
-// final iosStateChannel = const EventChannel('flutter_pos_printer_platform/state');
+final iosChannel = const MethodChannel('flutter_pos_printer_platform/methods');
+final iosStateChannel =
+    const EventChannel('flutter_pos_printer_platform/state');
 
 enum BTStatus { none, connecting, connected, scanning, stopScanning }
 

@@ -139,3 +139,7 @@
 ## 1.2.13
 
 - change tousing universal in IOS
+
+## 1.2.14
+
+- change back to use old bluetooth
