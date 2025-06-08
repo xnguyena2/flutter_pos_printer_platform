@@ -28,7 +28,7 @@ class BluetoothPrinterDevice {
 class BluetoothPrinterConnector
     implements PrinterConnector<BluetoothPrinterInput> {
   // ignore: unused_element
-  BluetoothPrinterConnector._({this.address = "", this.isBle = false}) {
+  BluetoothPrinterConnector._() {
     if (Platform.isAndroid)
       flutterPrinterChannel.setMethodCallHandler((MethodCall call) {
         _methodStreamController.add(call);
@@ -89,9 +89,9 @@ class BluetoothPrinterConnector
     });
   }
 
-  String address;
-  String? name;
-  bool isBle;
+  String address = "";
+  String? name = "";
+  bool isBle = false;
   BTStatus _status = BTStatus.none;
   BTStatus get status => _status;
 
