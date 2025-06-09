@@ -55,6 +55,8 @@ class FlutterPosPrinterPlatformPlugin : FlutterPlugin, MethodCallHandler, Plugin
     private lateinit var adapter: USBPrinterService
     private lateinit var bluetoothService: BluetoothService
 
+    private var isCalledRequestPermission: Boolean = false
+
 
     private val usbHandler = object : Handler(Looper.getMainLooper()) {
 
@@ -381,7 +383,10 @@ class FlutterPosPrinterPlatformPlugin : FlutterPlugin, MethodCallHandler, Plugin
         }
 
         if (!hasPermissions(context, *permissions.toTypedArray())) {
-            ActivityCompat.requestPermissions(currentActivity!!, permissions.toTypedArray(), PERMISSION_ALL)
+            if(!isCalledRequestPermission){
+                isCalledRequestPermission = true
+                ActivityCompat.requestPermissions(currentActivity!!, permissions.toTypedArray(), PERMISSION_ALL)
+            }
             return false
         }
         return true
