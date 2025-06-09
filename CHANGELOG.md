@@ -143,3 +143,7 @@
 ## 1.2.14
 
 - change back to use old bluetooth
+
+## 1.2.15
+
+- fix android stack overflow
