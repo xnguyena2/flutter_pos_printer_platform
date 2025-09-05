@@ -168,13 +168,11 @@ class Generator {
   /// Image rasterization
   List<int> _toRasterFormat(Image imgSrc) {
     final Image image = Image.from(imgSrc); // make a copy
-    // final int widthPx = image.width;
+    final int widthPx = image.width;
     final int heightPx = image.height;
 
     // Determine new width: closest integer that is divisible by lineHeight, if not diviable 8 then increase
-    final int targetWidth = image.width % 8 == 0
-        ? image.width
-        : (image.width + 8) - (image.width % 8);
+    final targetWidth = (widthPx + 7) & ~7;
 
     // Create a black bottom layer
     Image biggerImage = copyResize(image,
@@ -196,59 +194,31 @@ class Generator {
       oneChannelBytes.add(buffer[i]);
     }
 
-    // // Add some empty pixels at the end of each line (to make the width divisible by 8)
-    // if (widthPx % 8 != 0) {
-    //   final targetWidth = (widthPx + 8) - (widthPx % 8);
-    //   final missingPx = targetWidth - widthPx;
-    //   final extra = Uint8List(missingPx);
-
-    //   // oneChannelBytes = List<int>.filled(heightPx * targetWidth, 0);
-
-    //   for (int i = 0; i < heightPx; i++) {
-    //     final pos =
-    //         (i * widthPx) + i * missingPx; // Corrected position calculation
-    //     oneChannelBytes.insertAll(pos, extra);
-    //   }
-    // }
-
-    //  if (widthPx % 8 != 0) {
-    //   final targetWidth = (widthPx + 8) - (widthPx % 8);
-    //   final missingPx = targetWidth - widthPx;
-    //   final extra = Uint8List(missingPx);
-    //   for (int i = 0; i < heightPx; i++) {
-    //     final pos = (i * widthPx + widthPx) + i * missingPx;
-    //     oneChannelBytes.insertAll(pos, extra);
-    //   }
-    // }
-
     // Pack bits into bytes
     return _packBitsIntoBytes(oneChannelBytes);
   }
 
   /// Merges each 8 values (bits) into one byte
-  List<int> _packBitsIntoBytes(List<int> bytes) {
-    const pxPerLine = 8;
-    final List<int> res = <int>[];
-    const threshold = 127; // set the greyscale -> b/w threshold here
-    for (int i = 0; i < bytes.length; i += pxPerLine) {
-      int newVal = 0;
-      for (int j = 0; j < pxPerLine; j++) {
-        newVal = _transformUint32Bool(
-          newVal,
-          pxPerLine - j,
-          bytes[i + j] > threshold,
-        );
+  List<int> _packBitsIntoBytes(List<int> pixels) {
+    final List<int> res = [];
+    const int threshold = 127;
+    const int pxPerLine = 8;
+    for (int i = 0; i < pixels.length; i += pxPerLine) {
+      int byte = 0;
+      for (int b = 0; b < pxPerLine; b++) {
+        int idx = i + b;
+        int bit = 0;
+        if (idx < pixels.length) {
+          // 1 = đen, 0 = trắng (nếu in ngược thì đảo lại)
+          bit = (pixels[idx] > threshold) ? 1 : 0;
+        }
+        byte = (byte << 1) | bit;
       }
-      res.add(newVal ~/ 2);
+      res.add(byte);
     }
     return res;
   }
 
-  /// Replaces a single bit in a 32-bit unsigned integer.
-  int _transformUint32Bool(int uint32, int shift, bool newValue) {
-    return ((0xFFFFFFFF ^ (0x1 << shift)) & uint32) |
-        ((newValue ? 1 : 0) << shift);
-  }
   // ************************ (end) Internal helpers  ************************
 
   //**************************** Public command generators ************************
@@ -685,7 +655,7 @@ class Generator {
     final int heightPx = image.height;
 
     //if diviable for 8 then keep value, if not increase
-    final int widthBytes = (widthPx % 8 == 0 ? widthPx : (widthPx + 7)) ~/ 8;
+    final int widthBytes = ((widthPx + 7) ~/ 8);
 
     final List<int> rasterizedData = _toRasterFormat(image);
 
@@ -717,6 +687,63 @@ class Generator {
       bytes += List.from(header2);
     }
     return bytes;
+  }
+
+  /// Convert Image -> ZPL (^GFA ...) as raw bytes
+  List<int> imageToZpl(Image image, {int x = 0, int y = 0}) {
+    final int widthPx = image.width;
+    final int heightPx = image.height;
+    final int widthBytes = ((widthPx + 7) ~/ 8);
+    final int totalBytes = widthBytes * heightPx;
+
+    final List<int> raster = _toRasterFormat(image);
+
+    // pad/cut nếu cần
+    final data = List<int>.filled(totalBytes, 0);
+    for (int i = 0; i < raster.length && i < totalBytes; i++) {
+      data[i] = raster[i];
+    }
+
+    final hex = StringBuffer();
+    for (final b in data) {
+      hex.write(b.toRadixString(16).padLeft(2, '0').toUpperCase());
+    }
+
+    final sb = StringBuffer();
+    sb.writeln('^XA');
+    sb.writeln('^FO$x,$y');
+    sb.writeln('^GFA,$totalBytes,$totalBytes,$widthBytes,${hex.toString()}');
+    sb.writeln('^FS');
+    sb.writeln('^XZ');
+
+    return utf8.encode(sb.toString());
+  }
+
+  /// Convert Image -> TSPL (BITMAP ...) as raw bytes
+  List<int> imageToTspl(Image image, {int x = 0, int y = 0, int mode = 0}) {
+    final int widthPx = image.width;
+    final int heightPx = image.height;
+    final int widthBytes = ((widthPx + 7) ~/ 8);
+    final int totalBytes = widthBytes * heightPx;
+
+    final List<int> raster = _toRasterFormat(image);
+
+    final data = List<int>.filled(totalBytes, 0);
+    for (int i = 0; i < raster.length && i < totalBytes; i++) {
+      data[i] = raster[i];
+    }
+
+    final hex = StringBuffer();
+    for (final b in data) {
+      hex.write(b.toRadixString(16).padLeft(2, '0').toUpperCase());
+    }
+
+    final sb = StringBuffer();
+    sb.writeln('CLS');
+    sb.writeln('BITMAP $x,$y,$widthBytes,$heightPx,$mode,${hex.toString()}');
+    sb.writeln('PRINT 1,1');
+
+    return utf8.encode(sb.toString());
   }
 
   /// Print a barcode
