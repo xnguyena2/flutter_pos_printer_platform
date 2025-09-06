@@ -151,3 +151,7 @@
 ## 1.2.16
 
 - fix print label encode
+
+## 1.2.17
+
+- fix resize correct width
