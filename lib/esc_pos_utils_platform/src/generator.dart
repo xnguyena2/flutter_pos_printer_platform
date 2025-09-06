@@ -581,59 +581,66 @@ class Generator {
   List<int> image(Image imgSrc,
       {PosAlign align = PosAlign.center, bool isDoubleDensity = true}) {
     List<int> bytes = [];
-    // Image alignment
+
+    // --- 1. Gửi lệnh canh lề ---
     bytes += setStyles(const PosStyles().copyWith(align: align));
 
-    Image image;
-    if (!isDoubleDensity) {
-      int size = 558 ~/ 2;
-      if (_paperSize == PaperSize.mm58) {
-        size = 375 ~/ 2;
-      } else if (_paperSize == PaperSize.mm72) {
-        size = 503 ~/ 2;
-      }
-
-      image =
-          copyResize(imgSrc, width: size, interpolation: Interpolation.linear);
-    } else {
-      image = Image.from(imgSrc); // make a copy
+    // --- 2. Tính targetWidthPx theo paperSize ---
+    final double dotsPerMm = 203.0 / 25.4; // ~ 8
+    int paperMm;
+    switch (_paperSize) {
+      case PaperSize.mm58:
+        paperMm = 58;
+        break;
+      case PaperSize.mm72:
+        paperMm = 72;
+        break;
+      case PaperSize.mm80:
+      default:
+        paperMm = 80;
+        break;
     }
+    int targetWidthPx = (paperMm * dotsPerMm).round();
+    targetWidthPx = (targetWidthPx + 7) & ~7; // bội số của 8
 
-    bool highDensityHorizontal = isDoubleDensity;
-    bool highDensityVertical = isDoubleDensity;
+    // --- 3. Resize ảnh về đúng khổ giấy ---
+    Image image = copyResize(
+      imgSrc,
+      width: targetWidthPx,
+      interpolation: Interpolation.linear,
+    );
 
-    image = invert(image);
-    image = flipHorizontal(image);
-    final Image imageRotated = copyRotate(image, angle: 270);
+    // --- 4. Xử lý ảnh (nếu máy in yêu cầu) ---
+    image = invert(image); // đảo màu
+    image = flipHorizontal(image); // lật ngang
+    final Image imageRotated = copyRotate(image, angle: 270); // xoay
 
-    int lineHeight = highDensityVertical ? 3 : 1;
+    // --- 5. Chia ảnh thành blobs ---
+    int lineHeight = isDoubleDensity ? 3 : 1;
     final List<List<int>> blobs = _toColumnFormat(imageRotated, lineHeight * 8);
 
-    // Compress according to line density
-    // Line height contains 8 or 24 pixels of src image
-    // Each blobs[i] contains greyscale bytes [0-255]
-    // const int pxPerLine = 24 ~/ lineHeight;
-    for (int blobInd = 0; blobInd < blobs.length; blobInd++) {
-      blobs[blobInd] = _packBitsIntoBytes(blobs[blobInd]);
+    // --- 6. Đóng gói bit ---
+    for (int i = 0; i < blobs.length; i++) {
+      blobs[i] = _packBitsIntoBytes(blobs[i]);
     }
 
+    // --- 7. Header ESC * (bit image mode) ---
     final int heightPx = imageRotated.height;
-    int densityByte =
-        (highDensityHorizontal ? 1 : 0) + (highDensityVertical ? 32 : 0);
+    int densityByte = (isDoubleDensity ? 1 : 0) + (isDoubleDensity ? 32 : 0);
 
     final List<int> header = List.from(cBitImg.codeUnits);
     header.add(densityByte);
     header.addAll(_intLowHigh(heightPx, 2));
 
-    // Adjust line spacing (for 16-unit line feeds): ESC 3 0x10 (HEX: 0x1b 0x33 0x10)
-    bytes += [27, 51, 0];
+    // --- 8. In từng blob ---
+    bytes += [27, 51, 0]; // ESC 3 0 (line spacing = 0)
     for (int i = 0; i < blobs.length; ++i) {
       bytes += List.from(header)
         ..addAll(blobs[i])
         ..addAll('\n'.codeUnits);
     }
-    // Reset line spacing: ESC 2 (HEX: 0x1b 0x32)
-    bytes += [27, 50];
+    bytes += [27, 50]; // reset line spacing
+
     return bytes;
   }
 
@@ -641,22 +648,47 @@ class Generator {
   ///
   /// [image] is an instanse of class from [Image library](https://pub.dev/packages/image)
   List<int> imageRaster(
-    Image image, {
+    Image imgSrc, {
     PosAlign align = PosAlign.center,
     bool highDensityHorizontal = true,
     bool highDensityVertical = true,
     PosImageFn imageFn = PosImageFn.bitImageRaster,
   }) {
     List<int> bytes = [];
-    // Image alignment
+
+    // --- 1. Canh lề
     bytes += setStyles(const PosStyles().copyWith(align: align));
+
+    // --- 2. Tính width hợp lệ theo paperSize ---
+    final double dotsPerMm = 203.0 / 25.4; // ~8
+    int paperMm;
+    switch (_paperSize) {
+      case PaperSize.mm58:
+        paperMm = 58;
+        break;
+      case PaperSize.mm72:
+        paperMm = 72;
+        break;
+      case PaperSize.mm80:
+      default:
+        paperMm = 80;
+        break;
+    }
+    int targetWidthPx = (paperMm * dotsPerMm).round();
+    targetWidthPx = (targetWidthPx + 7) & ~7; // bội số của 8
+
+    // --- 3. Resize ảnh ---
+    final Image image = copyResize(
+      imgSrc,
+      width: targetWidthPx,
+      interpolation: Interpolation.linear,
+    );
 
     final int widthPx = image.width;
     final int heightPx = image.height;
+    final int widthBytes = (widthPx + 7) ~/ 8;
 
-    //if diviable for 8 then keep value, if not increase
-    final int widthBytes = ((widthPx + 7) ~/ 8);
-
+    // --- 4. Raster hóa ảnh ---
     final List<int> rasterizedData = _toRasterFormat(image);
 
     if (imageFn == PosImageFn.bitImageRaster) {
@@ -683,9 +715,13 @@ class Generator {
       // 'GS ( L' - FN_50 (Run print)
       final List<int> header2 = List.from(cRasterImg.codeUnits);
       header2.addAll([2, 0]); // pL pH
-      header2.addAll([48, 50]); // m fn[2,50]
+      header2.addAll([48, 50]); // m fn
       bytes += List.from(header2);
     }
+
+    // --- 5. Reset line spacing (cho chắc chắn) ---
+    bytes += [27, 50];
+
     return bytes;
   }
 
