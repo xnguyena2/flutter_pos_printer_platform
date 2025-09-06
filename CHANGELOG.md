@@ -147,3 +147,7 @@
 ## 1.2.15
 
 - fix android stack overflow
+
+## 1.2.16
+
+- fix print label encode
