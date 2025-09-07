@@ -577,6 +577,9 @@ class Generator {
     return bytes;
   }
 
+  /// Print an image using (ESC *) command
+  ///
+  /// [image] is an instance of class from [Image library](https://pub.dev/packages/image)
   List<int> image(
     Image imgSrc, {
     PosAlign align = PosAlign.center,
