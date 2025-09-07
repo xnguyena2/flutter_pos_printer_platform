@@ -583,60 +583,53 @@ class Generator {
     bool isDoubleDensity = true,
     int? paperMM,
   }) {
-    List<int> bytes = [];
-    // Image alignment
-    bytes += setStyles(const PosStyles().copyWith(align: align));
+    final List<int> bytes = [];
+    bytes.addAll(setStyles(const PosStyles().copyWith(align: align)));
 
-    Image image;
-    if (!isDoubleDensity) {
-      int size = 558 ~/ 2;
-      if (_paperSize == PaperSize.mm58) {
-        size = 375 ~/ 2;
-      } else if (_paperSize == PaperSize.mm72) {
-        size = 503 ~/ 2;
-      }
+    // 1. Xác định chiều rộng giấy
+    const double dotsPerMm = 203.0 / 25.4;
+    final int paperWidthMm = paperMM ??
+        const {
+          PaperSize.mm58: 56,
+          PaperSize.mm72: 70,
+          PaperSize.mm80: 76,
+        }[_paperSize] ??
+        76;
 
-      image =
-          copyResize(imgSrc, width: size, interpolation: Interpolation.linear);
-    } else {
-      image = Image.from(imgSrc); // make a copy
+    final int targetWidthPx = (paperWidthMm * dotsPerMm).round();
+
+    // 2. Resize + invert + rotate + flip (kết hợp nếu được)
+    Image image = copyResize(imgSrc,
+        width: targetWidthPx, interpolation: Interpolation.linear);
+    image = invert(flipHorizontal(copyRotate(image, angle: 270)));
+
+    // 3. Chọn độ nét
+    final int lineHeight = isDoubleDensity ? 3 : 1;
+    final List<List<int>> blobs = _toColumnFormat(image, lineHeight * 8);
+
+    // 4. Nén dữ liệu
+    for (int i = 0; i < blobs.length; i++) {
+      blobs[i] = _packBitsIntoBytes(blobs[i]);
     }
 
-    bool highDensityHorizontal = isDoubleDensity;
-    bool highDensityVertical = isDoubleDensity;
+    // 5. Header ESC/POS
+    final int densityByte =
+        (isDoubleDensity ? 1 : 0) + (isDoubleDensity ? 32 : 0);
+    final List<int> header = [
+      ...cBitImg.codeUnits,
+      densityByte,
+      ..._intLowHigh(image.height, 2),
+    ];
 
-    image = invert(image);
-    image = flipHorizontal(image);
-    final Image imageRotated = copyRotate(image, angle: 270);
-
-    int lineHeight = highDensityVertical ? 3 : 1;
-    final List<List<int>> blobs = _toColumnFormat(imageRotated, lineHeight * 8);
-
-    // Compress according to line density
-    // Line height contains 8 or 24 pixels of src image
-    // Each blobs[i] contains greyscale bytes [0-255]
-    // const int pxPerLine = 24 ~/ lineHeight;
-    for (int blobInd = 0; blobInd < blobs.length; blobInd++) {
-      blobs[blobInd] = _packBitsIntoBytes(blobs[blobInd]);
+    // 6. Gửi dữ liệu
+    bytes.addAll([27, 51, 0]); // ESC 3 0
+    for (final blob in blobs) {
+      bytes.addAll(header);
+      bytes.addAll(blob);
+      bytes.add(10); // '\n'
     }
+    bytes.addAll([27, 50]); // ESC 2 reset line feed
 
-    final int heightPx = imageRotated.height;
-    int densityByte =
-        (highDensityHorizontal ? 1 : 0) + (highDensityVertical ? 32 : 0);
-
-    final List<int> header = List.from(cBitImg.codeUnits);
-    header.add(densityByte);
-    header.addAll(_intLowHigh(heightPx, 2));
-
-    // Adjust line spacing (for 16-unit line feeds): ESC 3 0x10 (HEX: 0x1b 0x33 0x10)
-    bytes += [27, 51, 0];
-    for (int i = 0; i < blobs.length; ++i) {
-      bytes += List.from(header)
-        ..addAll(blobs[i])
-        ..addAll('\n'.codeUnits);
-    }
-    // Reset line spacing: ESC 2 (HEX: 0x1b 0x32)
-    bytes += [27, 50];
     return bytes;
   }
 
@@ -660,10 +653,10 @@ class Generator {
     final double dotsPerMm = 203.0 / 25.4;
     final int paperMm = paperMM ??
         switch (_paperSize) {
-          PaperSize.mm58 => 58,
-          PaperSize.mm72 => 72,
-          PaperSize.mm80 => 80,
-          _ => 80, // default fallback
+          PaperSize.mm58 => 56, // vùng in thực tế
+          PaperSize.mm72 => 70,
+          PaperSize.mm80 => 76,
+          _ => 76,
         };
     final int targetWidthPx = (paperMm * dotsPerMm).round();
 
