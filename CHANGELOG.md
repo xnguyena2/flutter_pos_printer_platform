@@ -179,3 +179,7 @@
 ## 1.2.23
 
 - fix smooth bluetooth
+
+## 1.2.24
+
+- fix smooth bluetooth

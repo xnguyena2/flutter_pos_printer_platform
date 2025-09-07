@@ -585,25 +585,33 @@ class Generator {
     PosAlign align = PosAlign.center,
     bool isDoubleDensity = true,
     int? paperMM,
+    bool resizeToPaper = true,
   }) {
     List<int> bytes = [];
     bytes.addAll(setStyles(const PosStyles().copyWith(align: align)));
 
-    // 1. Xác định chiều rộng giấy
-    const double dotsPerMm = 203.0 / 25.4;
-    final int paperWidthMm = paperMM ??
-        const {
-          PaperSize.mm58: 56,
-          PaperSize.mm72: 70,
-          PaperSize.mm80: 76,
-        }[_paperSize] ??
-        76;
+    Image image = imgSrc;
+    if (resizeToPaper) {
+      // 1. Xác định chiều rộng giấy
+      const double dotsPerMm = 203.0 / 25.4;
+      final int paperWidthMm = paperMM ??
+          const {
+            PaperSize.mm58: 56,
+            PaperSize.mm72: 70,
+            PaperSize.mm80: 76,
+          }[_paperSize] ??
+          76;
 
-    final int targetWidthPx = (paperWidthMm * dotsPerMm).round();
+      final int targetWidthPx = (paperWidthMm * dotsPerMm).round();
 
-    // 2. Resize + invert + rotate + flip (kết hợp nếu được)
-    Image image = copyResize(imgSrc,
-        width: targetWidthPx, interpolation: Interpolation.linear);
+      // 2. Resize + invert + rotate + flip (kết hợp nếu được)
+      final double ratio = targetWidthPx / imgSrc.width;
+      final int targetHeightPx = (imgSrc.height * ratio).round();
+      image = copyResize(imgSrc,
+          width: targetWidthPx,
+          height: targetHeightPx,
+          interpolation: Interpolation.linear);
+    }
 
     image = invert(image);
     image = flipHorizontal(image);
@@ -630,9 +638,7 @@ class Generator {
     // Adjust line spacing (for 16-unit line feeds): ESC 3 0x10 (HEX: 0x1b 0x33 0x10)
     bytes += [27, 51, 0];
     for (int i = 0; i < blobs.length; ++i) {
-      bytes += List.from(header)
-        ..addAll(blobs[i])
-        ..addAll('\n'.codeUnits);
+      bytes += List.from(header)..addAll(blobs[i]);
     }
     // Reset line spacing: ESC 2 (HEX: 0x1b 0x32)
     bytes += [27, 50];
@@ -649,32 +655,35 @@ class Generator {
     bool highDensityVertical = true,
     PosImageFn imageFn = PosImageFn.bitImageRaster,
     int? paperMM,
+    bool resizeToPaper = true,
   }) {
     List<int> bytes = [];
 
     // 1. Canh lề
     bytes += setStyles(const PosStyles().copyWith(align: align));
+    Image image = imgSrc;
+    if (resizeToPaper) {
+      // 2. Tính targetWidthPx theo paperSize
+      final double dotsPerMm = 203.0 / 25.4;
+      final int paperMm = paperMM ??
+          switch (_paperSize) {
+            PaperSize.mm58 => 56, // vùng in thực tế
+            PaperSize.mm72 => 70,
+            PaperSize.mm80 => 76,
+            _ => 76,
+          };
+      final int targetWidthPx = (paperMm * dotsPerMm).round();
 
-    // 2. Tính targetWidthPx theo paperSize
-    final double dotsPerMm = 203.0 / 25.4;
-    final int paperMm = paperMM ??
-        switch (_paperSize) {
-          PaperSize.mm58 => 56, // vùng in thực tế
-          PaperSize.mm72 => 70,
-          PaperSize.mm80 => 76,
-          _ => 76,
-        };
-    final int targetWidthPx = (paperMm * dotsPerMm).round();
-
-    // 3. Resize hình, giữ tỷ lệ
-    final double ratio = targetWidthPx / imgSrc.width;
-    final int targetHeightPx = (imgSrc.height * ratio).round();
-    final Image image = copyResize(
-      imgSrc,
-      width: targetWidthPx,
-      height: targetHeightPx,
-      interpolation: Interpolation.linear,
-    );
+      // 3. Resize hình, giữ tỷ lệ
+      final double ratio = targetWidthPx / imgSrc.width;
+      final int targetHeightPx = (imgSrc.height * ratio).round();
+      image = copyResize(
+        imgSrc,
+        width: targetWidthPx,
+        height: targetHeightPx,
+        interpolation: Interpolation.linear,
+      );
+    }
 
     final int widthPx = image.width;
     final int heightPx = image.height;
