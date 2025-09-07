@@ -155,3 +155,7 @@
 ## 1.2.17
 
 - fix resize correct width
+
+## 1.2.18
+
+- fix smooth bluetooth

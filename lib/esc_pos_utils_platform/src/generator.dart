@@ -103,16 +103,16 @@ class Generator {
     return ch.codeUnitAt(0) > 255;
   }
 
-  /// Generate multiple bytes for a number: In lower and higher parts, or more parts as needed.
-  ///
-  /// [value] Input number
-  /// [bytesNb] The number of bytes to output (1 - 4)
+  /// Generate multiple bytes for a number in little-endian order.
+  /// [value] is the input number.
+  /// [bytesNb] is the number of bytes to output (1 - 4)
   List<int> _intLowHigh(int value, int bytesNb) {
-    final dynamic maxInput = 256 << (bytesNb * 8) - 1;
-
     if (bytesNb < 1 || bytesNb > 4) {
       throw Exception('Can only output 1-4 bytes');
     }
+
+    final int maxInput = (1 << (bytesNb * 8)) - 1;
+
     if (value < 0 || value > maxInput) {
       throw Exception(
           'Number is too large. Can only output up to $maxInput in $bytesNb bytes');
@@ -120,10 +120,12 @@ class Generator {
 
     final List<int> res = <int>[];
     int buf = value;
+
     for (int i = 0; i < bytesNb; ++i) {
-      res.add(buf % 256);
-      buf = buf ~/ 256;
+      res.add(buf & 0xFF); // lấy byte thấp
+      buf = buf >> 8; // shift sang byte tiếp theo
     }
+
     return res;
   }
 
@@ -575,18 +577,15 @@ class Generator {
     return bytes;
   }
 
-  /// Print an image using (ESC *) command
-  ///
-  /// [image] is an instance of class from [Image library](https://pub.dev/packages/image)
   List<int> image(Image imgSrc,
       {PosAlign align = PosAlign.center, bool isDoubleDensity = true}) {
     List<int> bytes = [];
 
-    // --- 1. Gửi lệnh canh lề ---
+    // 1. Canh lề
     bytes += setStyles(const PosStyles().copyWith(align: align));
 
-    // --- 2. Tính targetWidthPx theo paperSize ---
-    final double dotsPerMm = 203.0 / 25.4; // ~ 8
+    // 2. Tính targetWidthPx
+    final double dotsPerMm = 203.0 / 25.4;
     int paperMm;
     switch (_paperSize) {
       case PaperSize.mm58:
@@ -601,43 +600,36 @@ class Generator {
         break;
     }
     int targetWidthPx = (paperMm * dotsPerMm).round();
-    targetWidthPx = (targetWidthPx + 7) & ~7; // bội số của 8
+    targetWidthPx = (targetWidthPx + 7) & ~7;
 
-    // --- 3. Resize ảnh về đúng khổ giấy ---
-    Image image = copyResize(
-      imgSrc,
-      width: targetWidthPx,
-      interpolation: Interpolation.linear,
-    );
+    // 3. Resize ảnh theo width max, giữ tỉ lệ
+    Image image = copyResize(imgSrc,
+        width: targetWidthPx, interpolation: Interpolation.linear);
 
-    // --- 4. Xử lý ảnh (nếu máy in yêu cầu) ---
-    image = invert(image); // đảo màu
-    image = flipHorizontal(image); // lật ngang
-    final Image imageRotated = copyRotate(image, angle: 270); // xoay
+    // 4. Xử lý ảnh: invert + flip + rotate
+    image = copyRotate(flipHorizontal(invert(image)), angle: 270);
 
-    // --- 5. Chia ảnh thành blobs ---
+    // 5. Chia thành blobs (lineHeight ≤ 24)
     int lineHeight = isDoubleDensity ? 3 : 1;
-    final List<List<int>> blobs = _toColumnFormat(imageRotated, lineHeight * 8);
+    final List<List<int>> blobs = _toColumnFormat(image, lineHeight * 8);
 
-    // --- 6. Đóng gói bit ---
+    // 6. Pack bits
     for (int i = 0; i < blobs.length; i++) {
       blobs[i] = _packBitsIntoBytes(blobs[i]);
     }
 
-    // --- 7. Header ESC * (bit image mode) ---
-    final int heightPx = imageRotated.height;
+    // 7. Header ESC *
+    final int heightPx = image.height;
     int densityByte = (isDoubleDensity ? 1 : 0) + (isDoubleDensity ? 32 : 0);
 
-    final List<int> header = List.from(cBitImg.codeUnits);
-    header.add(densityByte);
-    header.addAll(_intLowHigh(heightPx, 2));
+    final List<int> header = List.from(cBitImg.codeUnits)
+      ..add(densityByte)
+      ..addAll(_intLowHigh(heightPx, 2));
 
-    // --- 8. In từng blob ---
-    bytes += [27, 51, 0]; // ESC 3 0 (line spacing = 0)
-    for (int i = 0; i < blobs.length; ++i) {
-      bytes += List.from(header)
-        ..addAll(blobs[i])
-        ..addAll('\n'.codeUnits);
+    // 8. In từng blob
+    bytes += [27, 51, 0]; // line spacing = 0
+    for (final blob in blobs) {
+      bytes += List.from(header)..addAll(blob);
     }
     bytes += [27, 50]; // reset line spacing
 
@@ -648,82 +640,85 @@ class Generator {
   ///
   /// [image] is an instanse of class from [Image library](https://pub.dev/packages/image)
   List<int> imageRaster(
-    Image imgSrc, {
-    PosAlign align = PosAlign.center,
-    bool highDensityHorizontal = true,
-    bool highDensityVertical = true,
-    PosImageFn imageFn = PosImageFn.bitImageRaster,
-  }) {
-    List<int> bytes = [];
+  Image imgSrc, {
+  PosAlign align = PosAlign.center,
+  bool highDensityHorizontal = true,
+  bool highDensityVertical = true,
+  PosImageFn imageFn = PosImageFn.bitImageRaster,
+}) {
+  List<int> bytes = [];
 
-    // --- 1. Canh lề
-    bytes += setStyles(const PosStyles().copyWith(align: align));
+  // 1. Canh lề
+  bytes += setStyles(const PosStyles().copyWith(align: align));
 
-    // --- 2. Tính width hợp lệ theo paperSize ---
-    final double dotsPerMm = 203.0 / 25.4; // ~8
-    int paperMm;
-    switch (_paperSize) {
-      case PaperSize.mm58:
-        paperMm = 58;
-        break;
-      case PaperSize.mm72:
-        paperMm = 72;
-        break;
-      case PaperSize.mm80:
-      default:
-        paperMm = 80;
-        break;
-    }
-    int targetWidthPx = (paperMm * dotsPerMm).round();
-    targetWidthPx = (targetWidthPx + 7) & ~7; // bội số của 8
+  // 2. Tính targetWidthPx theo paperSize
+  final double dotsPerMm = 203.0 / 25.4;
+  final int paperMm = switch (_paperSize) {
+    PaperSize.mm58 => 58,
+    PaperSize.mm72 => 72,
+    PaperSize.mm80 => 80,
+  _ => 80, // default fallback
+  };
+  final int targetWidthPx = (paperMm * dotsPerMm).round();
 
-    // --- 3. Resize ảnh ---
-    final Image image = copyResize(
-      imgSrc,
-      width: targetWidthPx,
-      interpolation: Interpolation.linear,
-    );
+  // 3. Resize hình, giữ tỷ lệ
+  final double ratio = targetWidthPx / imgSrc.width;
+  final int targetHeightPx = (imgSrc.height * ratio).round();
+  final Image image = copyResize(
+    imgSrc,
+    width: targetWidthPx,
+    height: targetHeightPx,
+    interpolation: Interpolation.linear,
+  );
 
-    final int widthPx = image.width;
-    final int heightPx = image.height;
-    final int widthBytes = (widthPx + 7) ~/ 8;
+  final int widthPx = image.width;
+  final int heightPx = image.height;
+  final int widthBytes = (widthPx + 7) ~/ 8;
 
-    // --- 4. Raster hóa ảnh ---
-    final List<int> rasterizedData = _toRasterFormat(image);
+  // 4. Raster hóa ảnh
+  final List<int> rasterizedData = _toRasterFormat(image);
 
-    if (imageFn == PosImageFn.bitImageRaster) {
-      // GS v 0
-      final int densityByte =
-          (highDensityVertical ? 0 : 1) + (highDensityHorizontal ? 0 : 2);
+  if (imageFn == PosImageFn.bitImageRaster) {
+    final int densityByte =
+        (highDensityVertical ? 0 : 1) + (highDensityHorizontal ? 0 : 2);
+
+    // 5. Chia dữ liệu thành các chunk nhỏ (mỗi chunk 24 pixel)
+    const int chunkHeight = 24;
+    for (int y = 0; y < heightPx; y += chunkHeight) {
+      final int h = (y + chunkHeight <= heightPx) ? chunkHeight : heightPx - y;
+      final List<int> chunk =
+          rasterizedData.sublist(y * widthBytes, (y + h) * widthBytes);
 
       final List<int> header = List.from(cRasterImg2.codeUnits);
-      header.add(densityByte); // m
-      header.addAll(_intLowHigh(widthBytes, 2)); // xL xH
-      header.addAll(_intLowHigh(heightPx, 2)); // yL yH
-      bytes += List.from(header)..addAll(rasterizedData);
-    } else if (imageFn == PosImageFn.graphics) {
-      // 'GS ( L' - FN_112 (Image data)
-      final List<int> header1 = List.from(cRasterImg.codeUnits);
-      header1.addAll(_intLowHigh(widthBytes * heightPx + 10, 2)); // pL pH
-      header1.addAll([48, 112, 48]); // m=48, fn=112, a=48
-      header1.addAll([1, 1]); // bx=1, by=1
-      header1.addAll([49]); // c=49
-      header1.addAll(_intLowHigh(widthBytes, 2)); // xL xH
-      header1.addAll(_intLowHigh(heightPx, 2)); // yL yH
-      bytes += List.from(header1)..addAll(rasterizedData);
+      header.add(densityByte);
+      header.addAll(_intLowHigh(widthBytes, 2));
+      header.addAll(_intLowHigh(h, 2));
 
-      // 'GS ( L' - FN_50 (Run print)
-      final List<int> header2 = List.from(cRasterImg.codeUnits);
-      header2.addAll([2, 0]); // pL pH
-      header2.addAll([48, 50]); // m fn
-      bytes += List.from(header2);
+      bytes += List.from(header)..addAll(chunk);
     }
+  } else if (imageFn == PosImageFn.graphics) {
+    // Graphics mode (cũ)
+    final List<int> header1 = List.from(cRasterImg.codeUnits);
+    header1.addAll(_intLowHigh(widthBytes * heightPx + 10, 2));
+    header1.addAll([48, 112, 48]);
+    header1.addAll([1, 1]);
+    header1.addAll([49]);
+    header1.addAll(_intLowHigh(widthBytes, 2));
+    header1.addAll(_intLowHigh(heightPx, 2));
+    bytes += List.from(header1)..addAll(rasterizedData);
 
-    // --- 5. Reset line spacing (cho chắc chắn) ---
-    bytes += [27, 50];
-
-    return bytes;
+    final List<int> header2 = List.from(cRasterImg.codeUnits);
+    header2.addAll([2, 0]);
+    header2.addAll([48, 50]);
+    bytes += List.from(header2);
   }
+
+  // 6. Reset line spacing
+  bytes += [27, 50];
+
+  return bytes;
+}
+
 
   /// Convert Image -> ZPL (^GFA ...) as raw bytes
   List<int> imageToZpl(Image image, {int x = 0, int y = 0}) {
