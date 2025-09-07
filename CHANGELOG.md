@@ -163,3 +163,7 @@
 ## 1.2.19
 
 - fix smooth bluetooth
+
+## 1.2.20
+
+- fix smooth bluetooth
