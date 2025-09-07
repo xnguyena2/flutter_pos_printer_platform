@@ -578,7 +578,7 @@ class Generator {
   }
 
   List<int> image(Image imgSrc,
-      {PosAlign align = PosAlign.center, bool isDoubleDensity = true}) {
+      {PosAlign align = PosAlign.center, bool isDoubleDensity = true, int? paperMM,}) {
     List<int> bytes = [];
 
     // 1. Canh lề
@@ -586,19 +586,12 @@ class Generator {
 
     // 2. Tính targetWidthPx
     final double dotsPerMm = 203.0 / 25.4;
-    int paperMm;
-    switch (_paperSize) {
-      case PaperSize.mm58:
-        paperMm = 58;
-        break;
-      case PaperSize.mm72:
-        paperMm = 72;
-        break;
-      case PaperSize.mm80:
-      default:
-        paperMm = 80;
-        break;
-    }
+  final int paperMm = paperMM ?? switch (_paperSize) {
+    PaperSize.mm58 => 58,
+    PaperSize.mm72 => 72,
+    PaperSize.mm80 => 80,
+  _ => 80, // default fallback
+  };
     int targetWidthPx = (paperMm * dotsPerMm).round();
     targetWidthPx = (targetWidthPx + 7) & ~7;
 
@@ -645,6 +638,7 @@ class Generator {
   bool highDensityHorizontal = true,
   bool highDensityVertical = true,
   PosImageFn imageFn = PosImageFn.bitImageRaster,
+  int? paperMM,
 }) {
   List<int> bytes = [];
 
@@ -653,7 +647,7 @@ class Generator {
 
   // 2. Tính targetWidthPx theo paperSize
   final double dotsPerMm = 203.0 / 25.4;
-  final int paperMm = switch (_paperSize) {
+  final int paperMm = paperMM ?? switch (_paperSize) {
     PaperSize.mm58 => 58,
     PaperSize.mm72 => 72,
     PaperSize.mm80 => 80,
