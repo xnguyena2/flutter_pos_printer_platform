@@ -1,0 +1,4 @@
+module GSDKLibrary {
+    umbrella header "../GSDKLibrary.h"
+    export *
+}
