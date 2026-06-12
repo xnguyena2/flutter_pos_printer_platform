@@ -7,14 +7,20 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   setUp(() {
-    channel.setMockMethodCallHandler((MethodCall methodCall) async {
-      return '42';
-    });
+    // THAY THẾ setMockMethodCallHandler bằng cách dùng TestDefaultBinaryMessenger
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+          return '42';
+        });
   });
 
   tearDown(() {
-    channel.setMockMethodCallHandler(null);
+    // Khi xóa handler, bạn truyền null vào cho channel tương ứng
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, null);
   });
 
-  test('getPlatformVersion', () async {});
+  test('getPlatformVersion', () async {
+    // Code test của bạn ở đây
+  });
 }
