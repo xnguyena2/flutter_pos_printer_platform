@@ -196,3 +196,7 @@
 ## 1.2.27
 
 - Updates lib dependenci
+
+## 1.2.28
+
+- Updates lib dependenci
