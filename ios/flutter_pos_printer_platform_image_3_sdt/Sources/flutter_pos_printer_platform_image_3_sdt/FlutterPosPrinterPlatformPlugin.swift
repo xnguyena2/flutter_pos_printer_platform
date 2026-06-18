@@ -5,7 +5,7 @@ import ObjCSupport
 
 let NAMESPACE = "flutter_pos_printer_platform"
 
-public class FlutterPosPrinterPlatformPlugin: NSObject, FlutterPlugin, CBCentralManagerDelegate, CBPeripheralDelegate {
+public class FlutterPosPrinterPlatformPlugin: NSObject, FlutterPlugin {
     
     private var registrar: FlutterPluginRegistrar?
     private var channel: FlutterMethodChannel?
@@ -63,14 +63,15 @@ public class FlutterPosPrinterPlatformPlugin: NSObject, FlutterPlugin, CBCentral
             if Manager.bleConnecter == nil {
                 Manager.didUpdateState { [weak self] (state: Int) in
                     guard let self = self else { return }
-                    switch state {
-                    case 4: // CBCentralManagerStateUnsupported
+                    guard let cbState = CBManagerState(rawValue: state) else { return }
+                    switch cbState {
+                    case .unsupported:
                         print("The platform/hardware doesn't support Bluetooth Low Energy.")
-                    case 3: // CBCentralManagerStateUnauthorized
+                    case .unauthorized:
                         print("The app is not authorized to use Bluetooth Low Energy.")
-                    case 2: // CBCentralManagerStatePoweredOff
+                    case .poweredOff:
                         print("Bluetooth is currently powered off.")
-                    case 5: // CBCentralManagerStatePoweredOn
+                    case .poweredOn:
                         self.startScan()
                         print("Bluetooth power on")
                     default:
@@ -88,20 +89,26 @@ public class FlutterPosPrinterPlatformPlugin: NSObject, FlutterPlugin, CBCentral
             
         case "connect":
             guard let device = call.arguments as? [String: Any],
-                  let address = device["address"] as? String else {
-                result(FlutterError(code: "INVALID_ARGS", message: "Missing address target", details: nil))
+                let address = device["address"] as? String else {
+                result(FlutterError(code: "INVALID_ARGS", message: "Missing address argument", details: nil))
                 return
             }
-            
+
             print("connect device begin -> \(device["name"] ?? "")")
-            if let peripheral = self.scannedPeripherals[address] {
-                self.state = { [weak self] (state: ConnectState) in
-                    self?.updateConnectState(state)
-                }
-                
-                // ✅ FIXED: Using modern SPM bridged name 'connect' and passing your state closure
-                Manager.connect(peripheral, options: nil, timeout: 2, connectBlack: self.state)
+
+            guard let peripheral = self.scannedPeripherals[address] else {
+                result(FlutterError(
+                    code: "DEVICE_NOT_FOUND",
+                    message: "No scanned peripheral found for address: \(address)",
+                    details: "Call startScan first and wait for the device to appear in ScanResult"
+                ))
+                return
             }
+
+            self.state = { [weak self] (state: ConnectState) in
+                self?.updateConnectState(state)
+            }
+            Manager.connect(peripheral, options: nil, timeout: 2, connectBlack: self.state)
             result(nil)
             
         case "disconnect":
@@ -110,16 +117,25 @@ public class FlutterPosPrinterPlatformPlugin: NSObject, FlutterPlugin, CBCentral
             
         case "writeData":
             guard let args = call.arguments as? [String: Any],
-                  let bytesList = args["bytes"] as? [Int],
-                  let length = args["length"] as? Int else {
+                let bytesList = args["bytes"] as? [Int],
+                let length = args["length"] as? Int else {
                 result(FlutterError(code: "INVALID_ARGS", message: "Invalid payload params", details: nil))
                 return
             }
-            
-            // Replaces the character array logic with modern Swift Data buffers
-            let byteArray = bytesList.prefix(length).map { UInt8($0) }
+
+            let slice = bytesList.prefix(length)
+            guard slice.allSatisfy({ (0...255).contains($0) }) else {
+                result(FlutterError(
+                    code: "INVALID_BYTE",
+                    message: "Byte values must be in range 0...255",
+                    details: "Found out-of-range value: \(slice.first(where: { !(0...255).contains($0) })!)"
+                ))
+                return
+            }
+
+            let byteArray = slice.map { UInt8($0) }
             let data = Data(byteArray)
-            
+
             Manager.write(data)
             result(nil)
             
@@ -176,10 +192,6 @@ public class FlutterPosPrinterPlatformPlugin: NSObject, FlutterPlugin, CBCentral
         }
     }
     
-    // MARK: - CBCentralManagerDelegate Protocol Requirement
-    public func centralManagerDidUpdateState(_ central: CBCentralManager) {
-        // Stub required for protocol conformity
-    }
 }
 
 // MARK: - Event Stream Handler Implementation

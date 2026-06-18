@@ -200,3 +200,7 @@
 ## 1.2.28
 
 - Updates lib dependenci
+
+## 1.2.29
+
+- spm
