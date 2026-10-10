@@ -208,3 +208,7 @@
 ## 1.2.30
 
 - print label
+
+## 1.2.31
+
+- print label
