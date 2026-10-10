@@ -1,9 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data' show Uint8List;
-
 import 'package:image/image.dart';
 import 'package:gbk_codec/gbk_codec.dart';
-
 import '../flutter_esc_pos_utils.dart';
 import 'commands.dart';
 
@@ -957,6 +955,9 @@ class Generator {
   /// test máy của bạn in đúng với kiểu này.
   /// [labelWidthMm], [labelHeightMm], [gapMm]: nếu truyền thì thêm lệnh
   /// SIZE / GAP trước CLS.
+  /// [referenceX]/[referenceY] -> REFERENCE, [direction] -> DIRECTION,
+  /// [home] -> HOME (dò khe decal, chỉ cần cho khổ nhiều tem trên một hàng).
+  /// Không truyền thì không thêm lệnh nào (giống hành vi cũ).
   List<int> imageToTspl(
     Image image, {
     int x = 0,
@@ -967,6 +968,10 @@ class Generator {
     double? labelHeightMm,
     double? gapMm,
     int copies = 1,
+    int? referenceX,
+    int? referenceY,
+    int? direction,
+    bool home = false,
   }) {
     final int widthPx = image.width;
     final int heightPx = image.height;
@@ -984,6 +989,16 @@ class Generator {
     }
     if (gapMm != null) {
       sb.write('GAP ${n(gapMm)} mm,0 mm\r\n');
+    }
+    // Giống thư viện print_label: SIZE, GAP, REFERENCE, DIRECTION, [HOME], CLS.
+    if (referenceX != null && referenceY != null) {
+      sb.write('REFERENCE $referenceX,$referenceY\r\n');
+    }
+    if (direction != null) {
+      sb.write('DIRECTION $direction\r\n');
+    }
+    if (home) {
+      sb.write('HOME\r\n');
     }
     sb.write('CLS\r\n');
     sb.write('BITMAP $x,$y,$widthBytes,$heightPx,$mode,');
